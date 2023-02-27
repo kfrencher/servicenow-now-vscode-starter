@@ -10,8 +10,8 @@ function createFile(path: string, content: string) {
 /**
  * Copies a file from the extension's resources to the given location.
  */
-function copyFile(from: vscode.Uri, to: vscode.Uri): Thenable<void> {
-	return vscode.workspace.fs.copy(from, to);
+async function copyFile(from: vscode.Uri, to: vscode.Uri): Promise<void> {
+	return vscode.workspace.fs.copy(from, to, { overwrite: true });
 }
 
 /**
