@@ -3,6 +3,20 @@
 import { TextEncoder } from 'util';
 import * as vscode from 'vscode';
 
+/**
+ * Deletes a file from the given location.
+ */
+function deleteFile(path: string) {
+	vscode.workspace.fs.delete(vscode.Uri.file(path));
+}
+
+/**
+ * Finds a files with the given name in the given directory.
+ */
+function findFiles(path: string, name: string): Thenable<vscode.Uri[]> {
+	return vscode.workspace.findFiles(new vscode.RelativePattern(path, name));
+}
+
 function createFile(path: string, content: string) {
 	vscode.workspace.fs.writeFile(vscode.Uri.file(path), new TextEncoder().encode(content));
 }
@@ -43,14 +57,23 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	let disposable = vscode.commands.registerCommand('servicenow-now-vscode-starter.init', () => {
-		// The code you place here will be executed every time your command is executed
 
 		// getting root directory of workspace
 		var workspaceFolders = vscode.workspace.workspaceFolders;
 		if (workspaceFolders && workspaceFolders.length > 0) {
 			const rootPath = workspaceFolders[0].uri.fsPath;
+
+			// delete files named ".eslintrc" from the workspace
+			const eslintrcFiles = findFiles(rootPath, '**/.eslintrc');
+			eslintrcFiles.then((files) => {
+				files.forEach(file => {
+					deleteFile(file.fsPath);
+				});
+			});
+
 			copyDirectory(vscode.Uri.file(context.extensionPath + '/resources/workspace'), vscode.Uri.file(rootPath));
 		}
+
 	});
 
 	context.subscriptions.push(disposable);

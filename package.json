@@ -14,10 +14,12 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [{
-            "command": "servicenow-now-vscode-starter.init",
-            "title": "SN Starter: Init"
-        }]
+        "commands": [
+            {
+                "command": "servicenow-now-vscode-starter.init",
+                "title": "SN Starter: Init"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",

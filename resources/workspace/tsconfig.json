@@ -8,6 +8,10 @@
     "allowJs": true,
     "checkJs": true,
     "outDir": "build",
-    "strict": true
+    "strictNullChecks": true,
+    "strict": false,
+    "plugins": [{
+      "name": "typescript-strict-plugin"
+    }]
   }
  }
