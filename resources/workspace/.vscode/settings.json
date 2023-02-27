@@ -1,0 +1,30 @@
+{
+    "files.exclude": {
+        "*/system": true,
+        "system": true
+    },
+    "search.exclude": {
+        "*/system": true
+    },
+    "css.lint.emptyRules": "ignore",
+    "html.customData": [
+        "./lib/data/jelly_schema.json"
+    ],
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#1D856D",
+        "statusBar.foreground": "#fff",
+        "activityBar.background": "#1D856D",
+        "activityBar.foreground": "#fff"
+    },
+    "editor.defaultFormatter": "HookyQR.beautify",
+    "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+    "eslint.lintTask.enable": true,
+    "editor.formatOnSave": true,
+    "now.syncOnSave": true,
+    "[javascript]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    }
+}

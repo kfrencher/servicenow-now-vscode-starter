@@ -1,0 +1,13 @@
+{
+  "exclude": [
+    "lib/dts/clientAPI.d.ts",
+    "lib/dts/serverAPI.d.ts"
+  ],
+  "compilerOptions": {
+    "target": "es2021",
+    "allowJs": true,
+    "checkJs": true,
+    "outDir": "build",
+    "strict": true
+  }
+ }
