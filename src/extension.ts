@@ -1,6 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { TextEncoder } from 'util';
 import * as vscode from 'vscode';
 
 /**
@@ -17,10 +16,6 @@ function findFiles(path: string, name: string): Thenable<vscode.Uri[]> {
 	return vscode.workspace.findFiles(new vscode.RelativePattern(path, name));
 }
 
-function createFile(path: string, content: string) {
-	vscode.workspace.fs.writeFile(vscode.Uri.file(path), new TextEncoder().encode(content));
-}
-
 /**
  * Copies a file from the extension's resources to the given location.
  */
@@ -31,7 +26,7 @@ async function copyFile(from: vscode.Uri, to: vscode.Uri): Promise<void> {
 /**
  * Copies a directory from the extension's resources to the given location.
  */
-function copyDirectory(from: vscode.Uri, to: vscode.Uri): Thenable<any[]> {
+function copyDirectory(from: vscode.Uri, to: vscode.Uri): Thenable<unknown[]> {
 	return vscode.workspace.fs.readDirectory(from).then(entries => {
 		return Promise.all(entries.map(([name, type]) => {
 			const fromEntry = vscode.Uri.joinPath(from, name);
@@ -56,10 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('servicenow-now-vscode-starter.init', () => {
+	const disposable = vscode.commands.registerCommand('servicenow-now-vscode-starter.init', () => {
 
 		// getting root directory of workspace
-		var workspaceFolders = vscode.workspace.workspaceFolders;
+		const workspaceFolders = vscode.workspace.workspaceFolders;
 		if (workspaceFolders && workspaceFolders.length > 0) {
 			const rootPath = workspaceFolders[0].uri.fsPath;
 
@@ -80,4 +75,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 export function deactivate() { }
