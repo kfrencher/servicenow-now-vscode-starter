@@ -40,6 +40,58 @@ function copyDirectory(from: vscode.Uri, to: vscode.Uri): Thenable<unknown[]> {
 	});
 }
 
+/**
+ * Returns the string contents of a file
+ */
+function getFileText(path: string): Thenable<string> {
+	return vscode.workspace.fs.readFile(vscode.Uri.file(path)).then(data => {
+		return Buffer.from(data).toString();
+	});
+}
+
+/**
+ * Makes updates to the tsconfig.json file
+ */
+async function updateTsconfigJson(tsconfigPath: string, workspaceRootPath: string): Promise<void> {
+	// Find all the Script Include directories in the workspace
+	// This will find all the directories that contain a file named "app.config.json"
+	// Those directories are the root directories of a ServiceNow scoped application
+	const scriptIncludeDirectories = await vscode.workspace.findFiles('**/app.config.json');
+
+	// First gets all the paths and then transforms them into the path to the Script Include directory
+	const scriptIncludePaths: string[] = scriptIncludeDirectories.map((directory) => {
+		return directory.path;
+	}).map(absolutePath => {
+		// split the absolute path by the path separator
+		const pathParts = absolutePath.split('/');
+		// I only want the folder that contains the app.config.json file
+		// that would be the second to last item in the array
+		const [projectFolder,] = pathParts.slice(pathParts.length - 2);
+
+		return `${projectFolder}/src/Server Development/Script Includes`;
+	});
+
+
+	getFileText(tsconfigPath).then((text) => {
+		const tsconfig = JSON.parse(text);
+		const compilerOptions = tsconfig.compilerOptions || {};
+		compilerOptions.plugins = compilerOptions.plugins || [];
+		const typescriptStrictPlugin = compilerOptions.plugins.find((plugin: any) => {
+			return plugin.name === 'typescript-strict-plugin';
+		});
+		typescriptStrictPlugin.paths = scriptIncludePaths;
+
+		writeText(tsconfigPath, JSON.stringify(tsconfig, null, 4));
+	});
+}
+
+/**
+ * Writes the content of a string to a file
+ */
+function writeText(path: string, text: string): Thenable<void> {
+	return vscode.workspace.fs.writeFile(vscode.Uri.file(path), Buffer.from(text));
+}
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -66,7 +118,11 @@ export function activate(context: vscode.ExtensionContext) {
 				});
 			});
 
+			// copy files from extension resources to workspace
 			copyDirectory(vscode.Uri.file(context.extensionPath + '/resources/workspace'), vscode.Uri.file(rootPath));
+
+			// update tsconfig.json
+			updateTsconfigJson(rootPath + '/tsconfig.json', rootPath);
 		}
 
 	});
