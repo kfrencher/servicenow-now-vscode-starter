@@ -1,11 +1,11 @@
 {
-  "name": "now",
-  "version": "1.0.0",
-  "dependencies": {
-    "@types/angular": "^1.8.4",
-    "@types/jasmine": "^4.3.1"
-  },
-  "devDependencies": {
-    "typescript-strict-plugin": "^1.x"
-  }
+    "name": "now",
+    "version": "1.0.0",
+    "dependencies": {
+        "@types/angular": "^1.8.4",
+        "@types/jasmine": "^4.3.1"
+    },
+    "devDependencies": {
+        "typescript-strict-plugin": "^2.x"
+    }
 }
