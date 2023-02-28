@@ -72,6 +72,8 @@ async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 	});
 
 
+	// Adding the typescript-strict-plugin to the tsconfig.json file
+	// and adding all the paths that the plugin will apply to
 	getFileText(tsconfigPath).then((text) => {
 		const tsconfig = JSON.parse(text);
 		const compilerOptions = tsconfig.compilerOptions || {};
