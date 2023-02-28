@@ -14,12 +14,13 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [
-            {
-                "command": "servicenow-now-vscode-starter.init",
-                "title": "SN Starter: Init"
-            }
-        ]
+        "commands": [{
+            "command": "servicenow-now-vscode-starter.init",
+            "title": "SN Starter: Init"
+        }],
+        "typescriptServerPlugins": [{
+            "name": "typescript-strict-plugin"
+        }]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -28,6 +29,9 @@
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "node ./out/test/runTest.js"
+    },
+    "dependencies": {
+        "typescript-strict-plugin": "^2.x"
     },
     "devDependencies": {
         "@types/vscode": "1.54.0",

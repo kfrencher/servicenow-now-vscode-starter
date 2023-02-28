@@ -52,7 +52,7 @@ function getFileText(path: string): Thenable<string> {
 /**
  * Makes updates to the tsconfig.json file
  */
-async function updateTsconfigJson(tsconfigPath: string, workspaceRootPath: string): Promise<void> {
+async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 	// Find all the Script Include directories in the workspace
 	// This will find all the directories that contain a file named "app.config.json"
 	// Those directories are the root directories of a ServiceNow scoped application
@@ -76,6 +76,7 @@ async function updateTsconfigJson(tsconfigPath: string, workspaceRootPath: strin
 		const tsconfig = JSON.parse(text);
 		const compilerOptions = tsconfig.compilerOptions || {};
 		compilerOptions.plugins = compilerOptions.plugins || [];
+		/* eslint-disable-next-line -- plugin is any */
 		const typescriptStrictPlugin = compilerOptions.plugins.find((plugin: any) => {
 			return plugin.name === 'typescript-strict-plugin';
 		});
@@ -122,7 +123,7 @@ export function activate(context: vscode.ExtensionContext) {
 			copyDirectory(vscode.Uri.file(context.extensionPath + '/resources/workspace'), vscode.Uri.file(rootPath));
 
 			// update tsconfig.json
-			updateTsconfigJson(rootPath + '/tsconfig.json', rootPath);
+			updateTsconfigJson(rootPath + '/tsconfig.json');
 		}
 
 	});

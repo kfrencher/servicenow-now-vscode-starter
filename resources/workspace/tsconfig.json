@@ -4,7 +4,7 @@
     "lib/dts/serverAPI.d.ts"
   ],
   "compilerOptions": {
-    "target": "es2021",
+    "target": "es2020",
     "allowJs": true,
     "checkJs": true,
     "outDir": "build",
