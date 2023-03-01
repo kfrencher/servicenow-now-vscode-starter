@@ -168,6 +168,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// update tsconfig.json
 			updateTsconfigJson(rootPath + '/tsconfig.json');
+
+			// update server types
+			updateServerTypes(rootPath);
 		}
 
 	});
