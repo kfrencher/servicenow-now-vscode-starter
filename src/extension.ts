@@ -41,7 +41,9 @@ async function updateServerTypes(rootPath: string): Promise<void> {
 	const serverTypesUrl: string | undefined = vscode.workspace.getConfiguration('types').get('server.url');
 	// then load the contents of the data located at that url
 	const serverTypes = await (serverTypesUrl ? getUrlText(serverTypesUrl) : Promise.resolve(''));
-	writeText(rootPath + '/lib/dts/updatedServerAPI.d.ts', serverTypes);
+	if (serverTypes) {
+		writeText(rootPath + '/lib/dts/updatedServerAPI.d.ts', serverTypes);
+	}
 }
 
 /**
@@ -54,7 +56,7 @@ function deleteFile(path: string) {
 /**
  * Finds a files with the given name in the given directory.
  */
-function findFiles(path: string, name: string): Thenable<vscode.Uri[]> {
+async function findFiles(path: string, name: string): Promise<vscode.Uri[]> {
 	return vscode.workspace.findFiles(new vscode.RelativePattern(path, name));
 }
 
@@ -148,7 +150,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('servicenow-now-vscode-starter.init', () => {
+	const disposable = vscode.commands.registerCommand('servicenow-now-vscode-starter.init', async () => {
 
 		// getting root directory of workspace
 		const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -156,18 +158,16 @@ export function activate(context: vscode.ExtensionContext) {
 			const rootPath = workspaceFolders[0].uri.fsPath;
 
 			// delete files named ".eslintrc" from the workspace
-			const eslintrcFiles = findFiles(rootPath, '**/.eslintrc');
-			eslintrcFiles.then((files) => {
-				files.forEach(file => {
-					deleteFile(file.fsPath);
-				});
+			const eslintrcFiles = await findFiles(rootPath, '**/.eslintrc');
+			eslintrcFiles.forEach(file => {
+				deleteFile(file.fsPath);
 			});
 
 			// copy files from extension resources to workspace
-			copyDirectory(vscode.Uri.file(context.extensionPath + '/resources/workspace'), vscode.Uri.file(rootPath));
+			await copyDirectory(vscode.Uri.file(context.extensionPath + '/resources/workspace'), vscode.Uri.file(rootPath));
 
 			// update tsconfig.json
-			updateTsconfigJson(rootPath + '/tsconfig.json');
+			await updateTsconfigJson(rootPath + '/tsconfig.json');
 
 			// update server types
 			updateServerTypes(rootPath);
