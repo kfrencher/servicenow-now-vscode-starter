@@ -1,6 +1,48 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as https from 'https';
+
+/**
+ * Returns true if the file exists at the given path
+ */
+function fileExists(path: string): Thenable<boolean> {
+	return vscode.workspace.fs.stat(vscode.Uri.file(path)).then(() => {
+		return true;
+	}, () => {
+		return false;
+	});
+}
+
+/**
+ * Retrieves the contents of the file located at the given url
+ */
+function getUrlText(url: string): Thenable<string> {
+	return new Promise((resolve, reject) => {
+		https.get(url, (response) => {
+			let data = '';
+			response.on('data', (chunk) => {
+				data += chunk;
+			});
+			response.on('end', () => {
+				resolve(data);
+			});
+		}).on('error', (error) => {
+			reject(error);
+		});
+	});
+}
+
+async function updateServerTypes(rootPath: string): Promise<void> {
+	if (!await fileExists(rootPath + '/lib/dts/updatedServerAPI.d.ts')) {
+		return;
+	}
+
+	const serverTypesUrl: string | undefined = vscode.workspace.getConfiguration('types').get('server.url');
+	// then load the contents of the data located at that url
+	const serverTypes = await (serverTypesUrl ? getUrlText(serverTypesUrl) : Promise.resolve(''));
+	writeText(rootPath + '/lib/dts/updatedServerAPI.d.ts', serverTypes);
+}
 
 /**
  * Deletes a file from the given location.
@@ -131,6 +173,15 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(disposable);
+
+	// update server types
+	// if a value is set in the server.type.url configuration property
+	// getting root directory of workspace
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (workspaceFolders && workspaceFolders.length > 0) {
+		const rootPath = workspaceFolders[0].uri.fsPath;
+		updateServerTypes(rootPath);
+	}
 }
 
 // This method is called when your extension is deactivated
