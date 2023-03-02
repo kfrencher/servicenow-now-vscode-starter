@@ -1,12 +1,44 @@
+declare var $: any;
+declare var sn_dt_api: any;
 declare var current: GlideRecord;
 declare var previous: GlideRecord;
-declare var $: any;
-declare var $sp: any;
 declare var input: any;
 declare var data: any;
 declare var options: any;
+declare var $sp: any;
+declare var template: any;
+declare var email: any;
+declare var email_action: any;
 declare var action: SN_UI_Action;
 declare var answer: boolean;
+declare var AnswerUtils: any;
+declare var GwtMessage: any;
+declare var GlideTableDescriptor: any;
+declare var FilteredGlideRecord: GlideRecord;
+declare var GlideRelationship: any;
+declare var GlideStringUtil: any;
+declare var sn_assessment_core: any;
+
+declare class GlideImportSetRun {
+    constructor(importSetID: string);
+    /** The sys_id of the transform histories [sys_import_set_run] record associatedwith the transform */
+    getImportSetRunSysID(): string;
+}
+
+declare class GlideImportSetTransformer {
+    constructor();
+    setMapID(mapID: string): void;
+    transformAllMaps(importSetGr: GlideRecord): void;
+    getImportSetRun(): GlideImportSetRun;
+    isError: boolean;
+    setImportSetID(id: string): void;
+    setImportSetRun(importSetRun: GlideImportStRun): void;
+}
+
+interface String {
+    endsWith(x: string): boolean;
+    startsWith(x: string): boolean;
+}
 
 interface SPAction {
     [key: string]: any;
@@ -171,10 +203,12 @@ declare class GlideDate {
     getMonthNoTZ(): number;
     /** Returns the year part of a date with no timezone conversion */
     getYearNoTZ(): number;
+    getYearLocalTime(): number;
 }
 /** The scoped GlideDateTime default constructor, instantiates a new GlideDateTime object with the current date and time in Greenwich Mean Time (GMT). Optional 'value' parameter with a date and time value in the UTC time zone specified with the format yyyy-MM-dd HH:mm:ss */
 declare class GlideDateTime {
     constructor(dateString?: string);
+    static subtract(start: GlideDateTime, end: GlideDateTime): GlideDuration;
     /** Gets the date in the system time zone */
     getDate(): GlideDate;
     /** Gets the duration difference between two GlideDateTime values. Pass a single paramter which specifies milliseconds to subtract from the current GlideDateTime object */
@@ -292,7 +326,7 @@ declare class GlideDateTime {
 }
 /** The scoped GlideDuration class provides methods for working with spans of time or durations. GlideDuration objects store the duration as a date and time from January 1, 1970, 00:00:00. As a result, setValue() and getValue() use the GlideDateTime object for parameters and return values */
 declare class GlideDuration {
-    constructor(millis: number);
+    constructor(milliseconds?: number);
     /** Adds a given duration to the current duration */
     add(value: GlideDuration): GlideDuration;
     subtract(value: GlideDuration): GlideDuration;
@@ -381,10 +415,12 @@ declare class GlideUser {
     savePreference(name: string, value: string): void;
     /** Gets the specified user preference value for the current user */
     getPreference(name: string): string;
+    getMyGroups(): string[];
 }
 /** GlideSession manages all of the information for a user session. You can retrieve this from gs.getSession() */
 declare class GlideSession {
     constructor();
+    impersonate(userSysId: string): void;
     /** Returns true if the user is impersonating another user. */
     isImpersonating(): boolean;
     /** Checks if the current session is interactive */
@@ -408,6 +444,7 @@ declare class GlideSession {
 }
 /** The scoped GlideAggregate class is an extension of GlideRecord and allows database aggregation (COUNT, SUM, MIN, MAX, AVG) queries to be done. This can be helpful in creating customized reports or in calculations for calculated fields. The GlideAggregate class works only on number fields. Since currency fields are strings, you can't use the GlideAggregate class on currency fields */
 declare class GlideAggregate {
+    [index:string]: any;
     constructor(tableName: string);
     /** Adds a query to the aggregate */
     addQuery(field: string, operator: string, value: (string | string[] | boolean)): GlideQueryCondition;
@@ -419,9 +456,9 @@ declare class GlideAggregate {
     /** Issues the query and gets the results */
     query(): void;
     /** Adds an aggregate */
-    addAggregate(aggregate: string, field: string): void;
+    addAggregate(aggregate: string, field?: string): void;
     /** Gets the value of the specified aggregate */
-    getAggregate(aggregate: string, field: string): string;
+    getAggregate(aggregate: string, field?: string): string;
     /** Retrieves the number of rows in the GlideRecord */
     getRowCount(): number;
     /** Retrieves the table name associated with this GlideRecord */
@@ -467,7 +504,7 @@ declare class GlideElement {
     /** Gets the decrypted value */
     getDecryptedValue(): string;
     /** Gets the formatted display value of the field */
-    getDisplayValue(maxCharacters: number): string;
+    getDisplayValue(maxCharacters?: number): string;
     /** Determines whether the field is null */
     nil(): boolean;
     /** Determines if the current field has been modified */
@@ -724,7 +761,17 @@ declare class GlideServletResponse {
 /** The scoped GlideFilter class allows you to determine if a record meets a specified set of requirements. There is no constructor for scoped GlideFilter, it is accessed by using the global object 'GlideFilter' */
 declare class GlideFilter {
     /** Returns true when the record meets the filter condition */
-    checkRecord(gr: GlideRecord, filter: string, value: boolean): boolean;
+    static checkRecord(gr: GlideRecord, filter: string, value: boolean): boolean;
+    /**
+     * @param filter encoded query string in standard glide format
+     * @param title Descriptive title for filter
+     */
+    constructor(filter: string, title: string);
+    /**
+     * @param gr GlideRecord to evaluate
+     * @param match Flag that indicates whether all filter conditions must match default false
+    match(gr: GlideRecord, match: boolean): boolean;
+    setCaseSensitive(caseSensitive: boolean): void;
 }
 /** GlideLocale is a global object that can be called in scripts. Use the get() method to get a GlideLocale object */
 declare class GlideLocale {
@@ -741,10 +788,11 @@ declare class GlidePluginManager {
     constructor();
     /** Determine if a plugin is activated */
     isActive(pluginID: string): boolean;
+    static isActive(pluginID: string): boolean;
 }
 /** The Scoped GlideTableHierarchy API provides methods for handling information about table relationships */
 declare class GlideTableHierarchy {
-    constructor();
+    constructor(tableName: string);
     /** Returns the table's name */
     getName(): string;
     /** Returns a list of the table names in the hierarchy */
