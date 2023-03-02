@@ -13,7 +13,6 @@ declare var action: SN_UI_Action;
 declare var answer: boolean;
 declare var AnswerUtils: any;
 declare var GwtMessage: any;
-declare var GlideTableDescriptor: any;
 declare var FilteredGlideRecord: GlideRecord;
 declare var GlideRelationship: any;
 declare var GlideStringUtil: any;
@@ -32,7 +31,7 @@ declare class GlideImportSetTransformer {
     getImportSetRun(): GlideImportSetRun;
     isError: boolean;
     setImportSetID(id: string): void;
-    setImportSetRun(importSetRun: GlideImportStRun): void;
+    setImportSetRun(importSetRun: GlideImportSetRun): void;
 }
 
 interface String {
@@ -770,9 +769,11 @@ declare class GlideFilter {
     /**
      * @param gr GlideRecord to evaluate
      * @param match Flag that indicates whether all filter conditions must match default false
+     */
     match(gr: GlideRecord, match: boolean): boolean;
     setCaseSensitive(caseSensitive: boolean): void;
 }
+
 /** GlideLocale is a global object that can be called in scripts. Use the get() method to get a GlideLocale object */
 declare class GlideLocale {
     constructor();

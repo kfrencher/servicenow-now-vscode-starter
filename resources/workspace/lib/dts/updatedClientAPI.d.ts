@@ -1,6 +1,71 @@
 /*
 Copyright (C) 2019 ServiceNow, Inc. All rights reserved.
 */
+
+declare class GlideModal {
+    /**
+     * @param id The UI page to load into the modal.
+     * @param readOnly When true, hides the close button.
+     * @param width The width in pixels.
+     */
+    constructor(id: string, readOnly?: boolean, width?: number);
+
+    /**
+     * Get a GlideModal object by ID.
+     * @param id 
+     */
+    get(id: string): GlideModal
+
+    /**
+     * Returns the value of the specified preference (property).
+     * Invoking actions that create the modal typically also create the necessary preferences for the modal using the 
+     * GlideModalV3 - setPreference(String name, String value) method. The UI page client script then consumes 
+     * these preferences using this method.
+     * @param name Name of the preference value to retrieve. This value must have previously been set on the modal using the GlideModalV3 - setPreference(String name, String value) method.
+     * @returns {string} Preference value.
+     */
+    getPreference(name: string): string;
+
+    /**
+     * Renders the UI page in the modal.
+     */
+    render(): void;
+
+    /**
+     * Display a modal with the specified HTML content.
+     * The renderWithContent() method replaces the render() method, and does not request a UI page to render.
+     * @param html The HTML content to be shown in the modal.
+     */
+    renderWithContent(html: string): void;
+
+    /**
+     * Sets the specified field on the current form to the specified value.
+     * @param name Name of the form field to update. If this field does not exist on the current form, the request is ignored.
+     * @param value Value to store in the specified form field.
+     */
+    setPreference(name: string, value: string): void;
+
+    /**
+     * Sets the title of the modal.
+     * @param title The title to be displayed
+     */
+    setTitle(title: string): void;
+
+    /**
+     * Set the width in pixels.
+     * The modal is boxed into predefined system sizes.
+     * @param width The number of pixels.
+     */
+    setWidth(width: number): void;
+
+    /**
+     * Change the view and reload the modal.
+     * @param newView 
+     * @returns Method does not return a value
+     */
+    switchView(newView: string): void;
+
+}
  
 /** Navigation API. Note: The code in this file is compatible with API Level 1 and API Level 2 */
 declare const g_navigation: g_navigation;
