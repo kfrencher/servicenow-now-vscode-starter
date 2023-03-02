@@ -1525,17 +1525,20 @@ declare class JavaSet {
     contains(item: any): boolean;
     toArray(): any[];
 }
-declare class Hashtable {
-    get(key: any): any;
+
+declare class Hashtable<T> {
+    get(key: T): unknown;
     put(key: any, value: any): any;
     // @ts-ignore
     keySet(): Set
     toString(): string;
 }
-declare class GlideLDAPResult {
+
+declare class GlideLDAPResult<T=any> {
     hasMore(): boolean;
-    next(): Hashtable;
+    next(): Hashtable<T>;
 }
+
 declare class GlideLDAP {
     /**
      * Returns the configuration that is used for instance. Call
@@ -1566,7 +1569,7 @@ declare class GlideLDAP {
      * env.put("com.sun.jndi.ldap.read.timeout", timeout.toString());
      * 
      */
-    setup(): Hashtable;
+    setup(): Hashtable<string>;
     /**
      * Sets the LDAP configuration for the instance of GlideLDAP and
      * initializes some of the configuration
@@ -1576,9 +1579,9 @@ declare class GlideLDAP {
     getMatching(rdnAddOn: string, search: string, initialQuery: boolean, maxRecords: number): GlideLDAPResult;
     getSearchRDN(rdnAddOn: string): string;
     authenticate(dn: string, password: string, user: string): boolean;
-    getLDAPRecord(name: string, rdn: string): Hashtable;
+    getLDAPRecord(name: string, rdn: string): Hashtable<string>;
     getMatching(rdnAddOn: string, search: string, initialQuery: boolean, maxRecords: number): GlideLDAPResult;
-    getLDAPRecord(name: string, rdn: string): Hashtable;
+    getLDAPRecord(name: string, rdn: string): Hashtable<string>;
 
 }
 interface GlideHTTPHeader { }
