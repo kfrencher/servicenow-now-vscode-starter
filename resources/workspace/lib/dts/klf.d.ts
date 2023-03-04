@@ -91,11 +91,6 @@ declare namespace x_912467_klf {
         addUserToGroup(user: GlideRecord, group: GlideRecord): void;
     };
     namespace ListMetric {
-        export { createMetric };
+        function createMetric(glideRecord: GlideRecord, metricDefinition: GlideRecord): void;
     }
 }
-/**
- * @param {GlideRecord} glideRecord
- * @param {GlideRecord} metricDefinition
- */
-declare function createMetric(glideRecord: GlideRecord, metricDefinition: GlideRecord): void;
