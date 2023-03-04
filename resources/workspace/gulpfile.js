@@ -33,7 +33,7 @@ gulp.task('concat', function() {
 });
 
 gulp.task('clean', function() {
-    return gulp.src(['dist', 'build', 'node_modules/@types/node'], {
+    return gulp.src(['dist', 'build'], {
             read: false,
             allowEmpty: true
         })
