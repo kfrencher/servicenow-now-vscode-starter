@@ -83,4 +83,19 @@ gulp.task('postProcess', function() {
     return stream.pipe(gulp.dest('dist/types'));
 });
 
-gulp.task('default', gulp.series('clean', 'concat', 'compile', 'postProcess'));
+gulp.task('build', gulp.series('clean', 'concat', 'compile', 'postProcess'));
+
+gulp.task('deploy', gulp.series('build', function() {
+    // copy the files to the deploy directory
+    const workspaceDir = '../servicenow-now-vscode-starter/resources/workspace';
+    const distDir = 'dist';
+
+    gulp.src(`${distDir}/types/*.d.ts`)
+        .pipe(gulp.dest(`${workspaceDir}/lib/dts`));
+
+    return gulp.src('gulpfile.js')
+        .pipe(gulp.dest(`${workspaceDir}`));
+}));
+
+
+gulp.task('default', gulp.series('build'));
