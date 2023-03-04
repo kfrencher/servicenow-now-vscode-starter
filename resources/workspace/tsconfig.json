@@ -1,9 +1,14 @@
 {
   "exclude": [
     "lib/dts/clientAPI.d.ts",
-    "lib/dts/serverAPI.d.ts"
+    "lib/dts/serverAPI.d.ts",
+    "dist",
+    "build",
+    "gulpfile.js"
   ],
   "compilerOptions": {
+    "module": "CommonJS",
+    "lib": ["es2020", "dom"],
     "target": "es2020",
     "allowJs": true,
     "checkJs": true,

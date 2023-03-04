@@ -103,7 +103,8 @@ async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 	const scriptIncludeDirectories = await vscode.workspace.findFiles('**/app.config.json');
 
 	// First gets all the paths and then transforms them into the path to the Script Include directory
-	const scriptIncludePaths: string[] = scriptIncludeDirectories.map((directory) => {
+
+	const projectFolders: string[] = scriptIncludeDirectories.map((directory) => {
 		return directory.path;
 	}).map(absolutePath => {
 		// split the absolute path by the path separator
@@ -111,15 +112,19 @@ async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 		// I only want the folder that contains the app.config.json file
 		// that would be the second to last item in the array
 		const [projectFolder,] = pathParts.slice(pathParts.length - 2);
-
-		return `${projectFolder}/src/Server Development/Script Includes`;
+		return projectFolder;
 	});
 
+	const scriptIncludePaths: string[] = projectFolders.map(projectFolder => {
+		return `${projectFolder}/src/Server Development/Script Includes`;
+	});
 
 	// Adding the typescript-strict-plugin to the tsconfig.json file
 	// and adding all the paths that the plugin will apply to
 	getFileText(tsconfigPath).then((text) => {
 		const tsconfig = JSON.parse(text);
+
+		// Add the Script Include paths to the typescript-strict-plugin configuration
 		const compilerOptions = tsconfig.compilerOptions || {};
 		compilerOptions.plugins = compilerOptions.plugins || [];
 		/* eslint-disable-next-line -- plugin is any */
@@ -127,6 +132,16 @@ async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 			return plugin.name === 'typescript-strict-plugin';
 		});
 		typescriptStrictPlugin.paths = scriptIncludePaths;
+
+		// Add a custom field called "serviceNowScopedAppInfo" to the tsconfig.json file
+		// This is a list of objects that has a field for the project name
+		// and a field for the path to the Script Include directory
+		tsconfig.serviceNowScopedAppInfo = projectFolders.map(projectFolder => {
+			return {
+				name: projectFolder,
+				scriptIncludePath: `${projectFolder}/src/Server Development/Script Includes`
+			};
+		});
 
 		writeText(tsconfigPath, JSON.stringify(tsconfig, null, 4));
 	});
