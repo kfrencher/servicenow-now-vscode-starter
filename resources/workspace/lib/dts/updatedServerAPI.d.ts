@@ -440,6 +440,8 @@ declare class GlideSession {
     getClientData(name: string): string;
     /** Store a value in an active session */
     putClientData(name: string, value: string): void;
+    /** Clears a session client value previously set with putClientData(). */
+    clearClientData(name: string): void;
 }
 /** The scoped GlideAggregate class is an extension of GlideRecord and allows database aggregation (COUNT, SUM, MIN, MAX, AVG) queries to be done. This can be helpful in creating customized reports or in calculations for calculated fields. The GlideAggregate class works only on number fields. Since currency fields are strings, you can't use the GlideAggregate class on currency fields */
 declare class GlideAggregate {
@@ -918,7 +920,7 @@ interface gs {
     /** Gets a reference to the current Glide session */
     getSession(): GlideSession;
     /** Queues an event for the event manager */
-    eventQueue(name: string, record: GlideRecord, parm1: string, parm2: string, queue: string): void;
+    eventQueue(name: string, record: GlideRecord, parm1?: string|null, parm2?: string|null, queue?: string): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
     urlDecode(url: string): string;
@@ -946,7 +948,7 @@ interface gs {
     /** Gets a string representing the cache version for a CSS file */
     getCssCacheVersionString(): string;
     /** Generates a GUID that can be used when a unique identifier is required */
-    generateGUID(obj: Object): string;
+    generateGUID(): string;
     getNewAppScopeCompanyPrefix(): string;
     getMaxSchemaNameLength(): number;
     /** Adds an error message for the current session */
@@ -1805,4 +1807,13 @@ declare namespace sn_atf {
     class UserTestProcessor {
         copyTest(sourceTestSysId: string): string;
     }
+}
+
+declare interface XMLDocument {
+    /**
+     * Uses xpath to return a node of type org.w3c.dom.Node.
+     * Look at the JavaDoc for org.w3c.dom.Node for more information.
+     */
+    getNode(xpath: string): any;
+
 }
