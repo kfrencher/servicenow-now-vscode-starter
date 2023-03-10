@@ -716,44 +716,45 @@ x_912467_klf.ListMetric = (function() {
         return mi.hasNext();
     }
 
-
-    return {
-        /**
-         * @param {GlideRecord} glideRecord 
-         * @param {GlideRecord} metricDefinition 
-         */
-        createMetric: function(glideRecord, metricDefinition) {
-            var fieldName = metricDefinition.getValue('field');
-            gs.debug('current operation: ' + glideRecord.operation());
-            if (!glideRecord[fieldName].nil()) {
-                var values = glideRecord.getValue(fieldName).split(',');
-                var savedValues = getSavedValues(glideRecord.getUniqueValue(), fieldName);
-                var removedValues = new global.ArrayUtil().diff(savedValues, values);
-                values.forEach(function(value) {
-                    if (!exists(glideRecord.getUniqueValue(), fieldName, value)) {
-                        var mi = new global.MetricUtils().createMetricInstance(glideRecord, metricDefinition);
-                        mi.value = value;
-                        mi.update();
-                    }
-                });
-
-                if (removedValues.length > 0) {
-                    var mi = new GlideRecord('metric_instance');
-                    mi.addQuery('id', glideRecord.getUniqueValue());
-                    mi.addQuery('definition', metricDefinition.getUniqueValue());
-                    mi.addQuery('value', 'IN', removedValues);
-                    mi.deleteMultiple();
+    /**
+     * @param {GlideRecord} glideRecord 
+     * @param {GlideRecord} metricDefinition 
+     */
+    function createMetric(glideRecord, metricDefinition) {
+        var fieldName = metricDefinition.getValue('field');
+        gs.debug('current operation: ' + glideRecord.operation());
+        if (!glideRecord[fieldName].nil()) {
+            var values = glideRecord.getValue(fieldName).split(',');
+            var savedValues = getSavedValues(glideRecord.getUniqueValue(), fieldName);
+            var removedValues = new global.ArrayUtil().diff(savedValues, values);
+            values.forEach(function(value) {
+                if (!exists(glideRecord.getUniqueValue(), fieldName, value)) {
+                    var mi = new global.MetricUtils().createMetricInstance(glideRecord, metricDefinition);
+                    mi.value = value;
+                    mi.update();
                 }
-            } else {
-                var mi2 = new GlideRecord('metric_instance');
-                mi2.addQuery('id', glideRecord.getUniqueValue());
-                mi2.addQuery('definition', metricDefinition.getUniqueValue());
-                mi2.query();
-                while (mi2.next()) {
-                    mi2.deleteRecord();
-                }
+            });
+
+            if (removedValues.length > 0) {
+                var mi = new GlideRecord('metric_instance');
+                mi.addQuery('id', glideRecord.getUniqueValue());
+                mi.addQuery('definition', metricDefinition.getUniqueValue());
+                mi.addQuery('value', 'IN', removedValues);
+                mi.deleteMultiple();
+            }
+        } else {
+            var mi2 = new GlideRecord('metric_instance');
+            mi2.addQuery('id', glideRecord.getUniqueValue());
+            mi2.addQuery('definition', metricDefinition.getUniqueValue());
+            mi2.query();
+            while (mi2.next()) {
+                mi2.deleteRecord();
             }
         }
+    }
+
+    return {
+        createMetric: createMetric
     };
 
 })();

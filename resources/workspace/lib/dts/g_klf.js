@@ -117,6 +117,133 @@ global.KLF_AtfAddStepsHelper = (function() {
     };
 
 })();
+var global = global || {};
+
+/**
+ * For details on how to use this class refer to the {@link global.KLF_CommandProbe#executeCommand} function
+ * @param {string} midServer The name of the mid server
+ * @param {string} [name='KLF_CommandProbeES'] The name of the probe
+ */
+global.KLF_CommandProbe = function(midServer, name) {
+    this.midServer = midServer;
+    this.name = name || "KLF_CommandProbe";
+};
+
+/**
+ * Called by business rule on the ecc_queue table when the input records
+ * are created with the topic "KLF_CommandProbe"
+ * @param {GlideRecord} eccQueue The ecc_queue record
+ */
+global.KLF_CommandProbe.onRecordInserted = function(eccQueue) {
+    // eccQueue should have a payload that looks like this:
+    // <results probe_time="2054">
+    // <result command="whoami">
+    // <stdout>servicenow</stdout>
+    // <stderr/>
+    // </result>
+    // <parameters>
+    // <parameter name="agent" value="mid.server.aws_midserver"/>
+    // <parameter name="signature" value=""/>
+    // <parameter name="response_to" value=""/>
+    // <parameter name="from_sys_id" value=""/>
+    // <parameter name="source" value="3a98e38397512110b2e1f97e6253af5f"/>
+    // <parameter name="priority" value="2"/>
+    // <parameter name="agent_correlator" value=""/>
+    // <parameter name="processed" value=""/>
+    // <parameter name="error_string" value=""/>
+    // <parameter name="sys_id" value="f698e38397512110b2e1f97e6253af5f"/>
+    // <parameter name="sequence" value="186b282130d0000001"/>
+    // <parameter name="from_host" value=""/>
+    // <parameter name="sys_created_on" value="2023-03-05 16:01:54"/>
+    // <parameter name="sys_domain" value="global"/>
+    // <parameter name="name" value="whoami"/>
+    // <parameter name="topic" value="Command"/>
+    // <parameter name="state" value="ready"/>
+    // <parameter name="queue" value="output"/>
+    // <parameter name="ecc_queue" value="f698e38397512110b2e1f97e6253af5f"/>
+    // </parameters>
+    // </results>
+
+    var payload = eccQueue.getValue('payload');
+    /**
+     * This is actually a ServiceNow XMLDocument object. To get the API look at the Script Include
+     * @type {XMLDocument}
+     */
+    // @ts-ignore
+    var resultsDoc = new XMLDocument(payload);
+
+    /**
+     * This is a Java object. To get the API look at JavaDoc for org.w3c.dom.Node
+     * The stdout and stderr elements hold the output of the command. stdout will have the output
+     * if the command executed successfully. stderr will have the output if the command failed.
+     */
+    var stdout = resultsDoc.getNode('//stdout');
+    var stderr = resultsDoc.getNode('//stderr');
+
+    if (stdout || stderr) {
+        var output = {
+            stdout: stdout ? stdout.getTextContent() : '',
+            stderr: stderr ? stderr.getTextContent() : ''
+        };
+        var outputJson = JSON.stringify(output);
+        gs.eventQueue('klf_commandprobe.response', eccQueue, outputJson, eccQueue.getValue('source'));
+    } else {
+        gs.eventQueue('klf_commandprobe.response', eccQueue, '', eccQueue.getValue('source'));
+    }
+};
+
+global.KLF_CommandProbe.prototype = {
+
+    /**
+     * Adds a parameter to the payload that can be retrieved by a mid server
+     * script include using 
+     * @param {XMLDocument} payloadDoc
+     * @param {HTMLElement} parametersElement
+     * @param {string} name 
+     * @param {string} value 
+     */
+    _addParameter: function(payloadDoc, parametersElement, name, value) {
+        var el = payloadDoc.createElement("parameter");
+        el.setAttribute("name", name);
+        el.setAttribute("value", value);
+        parametersElement.appendChild(el);
+        return el;
+    },
+
+    /**
+     * Sets the shell command to execute
+     * The shell command works with the ECC Queue. An output record is created on the ECC Queue that
+     * sends the command to the mid server. The mid server executes the command and sends the output
+     * by crating an input record on the ECC Queue. The input record is processed by {@link global.KLF_CommandProbe.onRecordInserted}
+     * {@link global.KLF_CommandProbe.onRecordInserted} will create an event called "klf_commandprobe.response" that can be handled
+     * by a Script Action that you create.
+     * @param {string} command The shell command to execute
+     * @returns {{sysId:string,source:string,agentCorrelator:string}} The sys_id of the ecc_queue record and the value of the source field
+     */
+    executeCommand: function(command) {
+        // @ts-ignore
+        var payloadDoc = new XMLDocument();
+        var parametersElement = payloadDoc.createElement("parameters");
+        this._addParameter(payloadDoc, parametersElement, "name", command);
+        var agentCorrelator = gs.generateGUID();
+        var commandOutput = new GlideRecord("ecc_queue");
+        commandOutput.newRecord();
+        commandOutput.agent = "mid.server." + this.midServer;
+        commandOutput.queue = "output";
+        commandOutput.state = "ready";
+        commandOutput.topic = "Command";
+        commandOutput.name = this.name;
+        commandOutput.source = 'KLF_CommandProbe';
+        commandOutput.agent_correlator = agentCorrelator;
+        commandOutput.payload = payloadDoc.toString();
+
+        return {
+            sysId: commandOutput.insert(),
+            source: commandOutput.source,
+            agentCorrelator: commandOutput.agent_correlator,
+        };
+    }
+};
 //@ts-ignore
 var global = global || {};
 global.KLF_GlideRecordUtils = function() {};

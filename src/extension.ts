@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as https from 'https';
+import * as AdmZip from 'adm-zip';
 
 /**
  * Returns true if the file exists at the given path
@@ -13,19 +14,28 @@ function fileExists(path: string): Thenable<boolean> {
 		return false;
 	});
 }
-
 /**
- * Retrieves the contents of the file located at the given url
+ * Downloads the zip file located at the given url and extracts it to the given location
  */
-function getUrlText(url: string): Thenable<string> {
+function downloadAndExtractZip(url: string, destination: string): Thenable<void> {
 	return new Promise((resolve, reject) => {
 		https.get(url, (response) => {
-			let data = '';
+			response.setEncoding('binary');
+
+			const data: any = [];
 			response.on('data', (chunk) => {
-				data += chunk;
+				data.push(chunk);
 			});
+
 			response.on('end', () => {
-				resolve(data);
+				const buffer = Buffer.from(data.join(''), 'binary');
+				const zip = new AdmZip(buffer);
+				zip.extractAllTo(destination, true);
+				resolve();
+			});
+
+			response.on('error', (err) => {
+				reject(err);
 			});
 		}).on('error', (error) => {
 			reject(error);
@@ -33,16 +43,15 @@ function getUrlText(url: string): Thenable<string> {
 	});
 }
 
-async function updateServerTypes(rootPath: string): Promise<void> {
+async function updateTypes(rootPath: string): Promise<void> {
 	if (!await fileExists(rootPath + '/lib/dts/updatedServerAPI.d.ts')) {
 		return;
 	}
 
 	const serverTypesUrl: string | undefined = vscode.workspace.getConfiguration('types').get('server.url');
 	// then load the contents of the data located at that url
-	const serverTypes = await (serverTypesUrl ? getUrlText(serverTypesUrl) : Promise.resolve(''));
-	if (serverTypes) {
-		writeText(rootPath + '/lib/dts/updatedServerAPI.d.ts', serverTypes);
+	if (serverTypesUrl) {
+		downloadAndExtractZip(serverTypesUrl, rootPath + '/lib/dts');
 	}
 }
 
@@ -184,8 +193,8 @@ export function activate(context: vscode.ExtensionContext) {
 			// update tsconfig.json
 			await updateTsconfigJson(rootPath + '/tsconfig.json');
 
-			// update server types
-			updateServerTypes(rootPath);
+			// update types in lib folder
+			updateTypes(rootPath);
 		}
 
 	});
@@ -198,7 +207,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (workspaceFolders && workspaceFolders.length > 0) {
 		const rootPath = workspaceFolders[0].uri.fsPath;
-		updateServerTypes(rootPath);
+		updateTypes(rootPath);
 	}
 }
 
