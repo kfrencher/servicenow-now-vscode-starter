@@ -2,7 +2,7 @@
 Copyright (C) 2019 ServiceNow, Inc. All rights reserved.
 */
 declare var _window: any;
-declare var _osWindow: any;
+declare var _oswWindow: any;
 declare var _snbWindow: any;
 declare var _snbSpWindow: any;
 declare var classification: any;
@@ -100,6 +100,7 @@ declare const g_form: g_form;
 interface g_form {
     elements: any[];
     modified: boolean;
+    /** Only available in Client Scripts loaded by Service Portal that are for KLF Form */
     isLoading: boolean;
     tableName: string;
     hasField(fieldName: string): boolean;
@@ -144,7 +145,7 @@ interface g_form {
     getOption(fieldName: string, choiceValue: string): HTMLElement;
     /** Returns the GlideRecord for a specified field getReference() accepts a second parameter, a callback function Warning: This requires a call to the server so using this function will require additional time and may introduce latency to your page */
     getReference(fieldName: string, callback: string): string;
-    getReference(fieldName: string, callback: (value:any) => void): string;
+    getReference(fieldName: string, callback: (value: any) => void): string;
     /** Returns all section names, whether visible or not, in an array This method is available starting with the Fuji release */
     getSectionNames(): string;
     /** Returns the elements for the form's sections in an array */
