@@ -1,6 +1,20 @@
 /*
 Copyright (C) 2019 ServiceNow, Inc. All rights reserved.
 */
+declare var _window: any;
+declare var _osWindow: any;
+declare var _snbWindow: any;
+declare var _snbSpWindow: any;
+declare var classification: any;
+declare var jQuery: any;
+declare var g_ui_testing_util: any;
+declare var g_lang: any;
+declare var g_tz_offset: any;
+declare var g_user_date_time_format: any;
+declare var formatMessage: any;
+declare var GlideOverlay: any;
+declare var triggerAction: any;
+declare var loadForm: any;
 
 declare class GlideModal {
     /**
@@ -84,6 +98,10 @@ interface g_navigation {
 /** g_form is a global object used in client-side scripts to customize forms */
 declare const g_form: g_form;
 interface g_form {
+    elements: any[];
+    modified: boolean;
+    isLoading: boolean;
+    tableName: string;
     hasField(fieldName: string): boolean;
     /** Adds an icon on a field’s label. This method is available starting with the Fuji release */
     addDecoration(fieldName: string, icon: string, title: string): void;
@@ -93,6 +111,7 @@ interface g_form {
     addInfoMessage(message: string): void;
     /** Adds a choice to a choice list field If the index is not specified, the choice is added to the end of the list. Optional: Use the index field to specify a particular place in the list */
     addOption(fieldName: string, choiceValue: string, choiceLabel: string): void;
+    addOption(fieldName: string, choiceValue: string, choiceLabel: string, order: number): void;
     /** Removes messages that were previously added with addErrorMessage() and addInfoMessage() */
     clearMessages(): void;
     /** Removes all options from a choice list */
@@ -125,6 +144,7 @@ interface g_form {
     getOption(fieldName: string, choiceValue: string): HTMLElement;
     /** Returns the GlideRecord for a specified field getReference() accepts a second parameter, a callback function Warning: This requires a call to the server so using this function will require additional time and may introduce latency to your page */
     getReference(fieldName: string, callback: string): string;
+    getReference(fieldName: string, callback: (value:any) => void): string;
     /** Returns all section names, whether visible or not, in an array This method is available starting with the Fuji release */
     getSectionNames(): string;
     /** Returns the elements for the form's sections in an array */
@@ -163,6 +183,7 @@ interface g_form {
     setDisplay(fieldName: string, display: boolean): void;
     /** Sets the plain text value of the field label. This method is available starting with the Fuji release */
     setLabelOf(fieldname: string, label: string): void;
+    setLabel(fieldname: string, label: string): void;
     /** Makes the field required if true. Makes the field optional if false. Best Practice: Use UI Policy rather than this method whenever possible  */
     setMandatory(fieldName: string, value: boolean): void;
     /** Makes the field read-only if true Makes the field editable if false. Note: Both setReadOnly and setReadonly are functional.  Best Practice: Use UI Policy rather than this method whenever possible */
@@ -171,12 +192,13 @@ interface g_form {
     setSectionDisplay(sectionName: string, display: boolean): boolean;
     /** Sets the value and the display value of a field Will display value if there is no displayValue */
     setValue(fieldName: string, value: string, displayValue?: string): void;
+    setValue(fieldName: string, value: string | boolean | string[] | number, displayValue?: string): void;
     /** Displays the field if true. Hides the field if false. If the field is hidden, the space is left blank. This method cannot hide mandatory fields with no value */
     setVisible(fieldName: string, display: boolean): void;
     /** Displays an error message under the specified form field (either a control object or the name of the field). If the control or field is currently scrolled off the screen, it will be scrolled to. A global property (glide.ui.scroll_to_message_field) is available that controls automatic message scrolling when the form field is offscreen (scrolls the form to the control or field). The showFieldMsg() method is a similar method that requires a 'type' parameter */
     showErrorBox(input: string, message: string, scrollForm: boolean): void;
     /** Displays either an informational or error message under the specified form field (either a control object or the name of the field). Type may be either 'info' or 'error.' If the control or field is currently scrolled off the screen, it will be scrolled to. A global property (glide.ui.scroll_to_message_field) is available that controls automatic message scrolling when the form field is offscreen (scrolls the form to the control or field) */
-    showFieldMsg(input: string, message: string, type: string, scrollForm: boolean): void;
+    showFieldMsg(input: string, message: string, type?: string, scrollForm?: boolean): void;
     /** Displays the specified related list on the form */
     showRelatedList(listTableName: string): void;
     /** Displays all related lists on the form */
@@ -267,7 +289,7 @@ interface g_user {
 /** The GlideAjax class allows the execution of server-side code from the client. Initialize GlideAjax with the name of the client callable Script Include that extends AbstractAjaxProcessor */
 declare const GlideAjax: GlideAjax;
 interface GlideAjax {
-    new(): GlideAjax_proto;
+    new(scriptIncludeName: string): GlideAjax_proto;
     readonly prototype: GlideAjax_proto;
 }
 interface GlideAjax_proto {
@@ -276,7 +298,7 @@ interface GlideAjax_proto {
     /** Makes an asynchronous call to the server. On completion, invokes callback function with response object as an argument */
     getXML(callBackFunction: string): void;
     /** Makes an asynchronous call to the server. On completion, invokes callback function with 'answer' value extracted from response object as an argument */
-    getXMLAnswer(callbackFunction: string, additionalParams: Object, responseParams: Object): void;
+    getXMLAnswer(callbackFunction: (answer: string) => void, additionalParams?: Object, responseParams?: Object): void;
 }
 /** Constructor to create a new dialog window object in the current window and frame. id is the name of the UI page to load into the dialog window */
 declare const GlideDialogWindow: GlideDialogWindow;
