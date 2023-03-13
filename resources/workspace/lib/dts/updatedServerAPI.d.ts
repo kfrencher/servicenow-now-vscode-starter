@@ -448,8 +448,8 @@ declare class GlideAggregate {
     [index:string]: any;
     constructor(tableName: string);
     /** Adds a query to the aggregate */
-    addQuery(field: string, operator: string, value: (string | string[] | boolean)): GlideQueryCondition;
-    addQuery(field: string, value: (string | string[] | boolean)): GlideQueryCondition;
+    addQuery(field: string, operator: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
+    addQuery(field: string, value: (string | string[] | GlideDate | GlideDateTime | boolean)): GlideQueryCondition;
     /** Adds a NULL query to the aggregate */
     addNullQuery(field: string): GlideQueryCondition;
     /** Adds a NOT NULL query to the aggregate */
@@ -609,8 +609,8 @@ declare class GlideRecord {
     /** Enables and disables the running of business rules and script engines. When disabled, inserts and updates are not audited */
     setWorkflow(e: boolean): void;
     /** Adds a filter to return records by specifying a field and value. You can use an optional 'operator' as a second parameter */
-    addQuery(name: string, value: (string | string[] | boolean)): GlideQueryCondition;
-    addQuery(name: string, operator: string, value: (string | string[] | boolean)): GlideQueryCondition;
+    addQuery(name: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
+    addQuery(name: string, operator: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
     /** Adds a filter to return active records */
     addActiveQuery(): GlideQueryCondition;
     /** Adds a filter to return records where the specified field is null */
