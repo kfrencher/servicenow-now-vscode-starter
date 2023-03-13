@@ -920,7 +920,7 @@ interface gs {
     /** Gets a reference to the current Glide session */
     getSession(): GlideSession;
     /** Queues an event for the event manager */
-    eventQueue(name: string, record: GlideRecord, parm1?: string|null, parm2?: string|null, queue?: string): void;
+    eventQueue(name: string, record: GlideRecord, parm1?: string|string[]|null, parm2?: string|string[]|null, queue?: string): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
     urlDecode(url: string): string;
