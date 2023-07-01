@@ -1858,3 +1858,21 @@ declare interface XMLDocument {
     getNode(xpath: string): any;
 
 }
+
+declare class GlideSysAttachment {
+    /** Returns comma delimited list of attachments that were copied */
+    copy(sourceTable: string, sourceId: string, targetTable: string, targetId: string): string;
+    deleteAttachment(attachmentId: string): void;
+    /** Returns unexecuted GlideRecord with list of attachment metadata */
+    getAttachments(tableName: string, sysId: string): GlideRecord;
+    /** Attachment contents as a string. Returns up to 5MB of data */
+    getContent(sysAttachment: GlideRecord): string;
+    /** Attachment contents as a base64 encoded string. Returns up to 5MB of data */
+    getContentBase64(sysAttachment: GlideRecord): string;
+    /** Returns stream given sys_id of an attachment. Can use the GlideTextReader API to read the content of stream */
+    getContentStream(sysId: string): GlideScriptableInputStream;
+    /** Attaches a specified attachment to the specified record. Retruns attachment sys_id. Returns null if the attachment was not added */
+    write(record: GlideRecord, fileName: string, contentType: string, content: string): string;
+    writeBase64(record: GlideRecord, fileName: string, contentType: string, contentAsBase64: string): string;
+    writeContentStream(record: GlideRecord, fileName: string, contentType: string, inputStream: GlideScriptableInputStream): string;
+}
