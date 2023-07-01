@@ -18,6 +18,46 @@ declare var GlideRelationship: any;
 declare var GlideStringUtil: any;
 declare var sn_assessment_core: any;
 
+declare class GlideChoice {
+    constructor(value: string, label: string);
+    constructor(value: string, label: string, sysId: string);
+    getLabel(): string;
+    getValue(): string;
+    getId(): string;
+    setId(id: string): void;
+    getImage(): string;
+    getSelected(): boolean;
+    setLabel(label: string): void;
+    setValue(value: string): void;
+    setImage(image: string): void;
+    setSelected(selected: boolean): void;
+    setParameter(name: string, value: any): void;
+    getParameter(name: string): any;
+}
+
+declare class GlideChoiceList {
+    sort(): void;
+    addNone(): GlideChoice;
+    removeNone(): void;
+    add(choice: GlideChoice): GlideChoice;
+    add(value: string, label: string): GlideChoice;
+    addFirst(value: string, label: string): void;
+    addAll(choice: GlideChoiceList): void;
+    getChoice(value: string): GlideChoice;
+    getChoiceNoTrim(value: string): GlideChoice;
+    removeChoice(value: string): GlideChoice;
+    removeChoice(index: number): GlideChoice;
+    getLabelOf(value:string): string;
+    getValueOf(label:string): string;
+    getSize(): number;
+    toXML(xmlDocument: XMLDocument): number;
+    /** Returns a Java JSONArray */
+    toJSON(): any;
+    /** Takes a GlideController */
+    getNullOverride(glideController: any): string;
+    static getChoiceList(tableName: string,fieldName: string): GlideChoiceList;
+}
+
 declare class GlideImportSetRun {
     constructor(importSetID: string);
     /** The sys_id of the transform histories [sys_import_set_run] record associatedwith the transform */
