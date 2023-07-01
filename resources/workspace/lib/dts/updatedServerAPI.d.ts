@@ -251,7 +251,7 @@ declare class GlideDateTime {
     /** Gets the date in the system time zone */
     getDate(): GlideDate;
     /** Gets the duration difference between two GlideDateTime values. Pass a single paramter which specifies milliseconds to subtract from the current GlideDateTime object */
-    subtract(start: GlideDateTime, end: GlideDateTime): GlideDuration;
+    subtract(start: GlideDateTime | number, end?: GlideDateTime): GlideDuration;
     /** Gets the date for the user's time zone */
     getLocalDate(): GlideDate;
     /** Returns a GlideTime object that represents the time portion of the GlideDateTime object in the user's time zone */
@@ -488,8 +488,8 @@ declare class GlideAggregate {
     [index:string]: any;
     constructor(tableName: string);
     /** Adds a query to the aggregate */
-    addQuery(field: string, operator: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
-    addQuery(field: string, value: (string | string[] | GlideDate | GlideDateTime | boolean)): GlideQueryCondition;
+    addQuery(field: string, operator: string, value: any): GlideQueryCondition;
+    addQuery(field: string, value: any): GlideQueryCondition;
     /** Adds a NULL query to the aggregate */
     addNullQuery(field: string): GlideQueryCondition;
     /** Adds a NOT NULL query to the aggregate */
@@ -599,7 +599,7 @@ declare class GlideElement {
     /** Sets a date to a numeric value */
     setDateNumericValue(value: any): void;
     /** Gets date in numberic value */
-    dateNumericValue(value: string): number;
+    dateNumericValue(): number;
 }
 /** The scoped GlideElementDescriptor class provides information about individual fields */
 declare class GlideElementDescriptor {
@@ -649,8 +649,8 @@ declare class GlideRecord {
     /** Enables and disables the running of business rules and script engines. When disabled, inserts and updates are not audited */
     setWorkflow(e: boolean): void;
     /** Adds a filter to return records by specifying a field and value. You can use an optional 'operator' as a second parameter */
-    addQuery(name: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
-    addQuery(name: string, operator: string, value: (string | string[] | GlideDateTime | GlideDate | boolean)): GlideQueryCondition;
+    addQuery(name: string, value: any): GlideQueryCondition;
+    addQuery(name: string, operator: string, value: any): GlideQueryCondition;
     /** Adds a filter to return active records */
     addActiveQuery(): GlideQueryCondition;
     /** Adds a filter to return records where the specified field is null */
@@ -802,7 +802,7 @@ declare class GlideServletResponse {
 /** The scoped GlideFilter class allows you to determine if a record meets a specified set of requirements. There is no constructor for scoped GlideFilter, it is accessed by using the global object 'GlideFilter' */
 declare class GlideFilter {
     /** Returns true when the record meets the filter condition */
-    static checkRecord(gr: GlideRecord, filter: string, value: boolean): boolean;
+    static checkRecord(gr: GlideRecord, filter: string, value?: boolean): boolean;
     /**
      * @param filter encoded query string in standard glide format
      * @param title Descriptive title for filter
@@ -1871,7 +1871,7 @@ declare class GlideSysAttachment {
     getContentBase64(sysAttachment: GlideRecord): string;
     /** Returns stream given sys_id of an attachment. Can use the GlideTextReader API to read the content of stream */
     getContentStream(sysId: string): GlideScriptableInputStream;
-    /** Attaches a specified attachment to the specified record. Retruns attachment sys_id. Returns null if the attachment was not added */
+    /** Attaches a specified attachment to the specified record. Returns attachment sys_id. Returns null if the attachment was not added */
     write(record: GlideRecord, fileName: string, contentType: string, content: string): string;
     writeBase64(record: GlideRecord, fileName: string, contentType: string, contentAsBase64: string): string;
     writeContentStream(record: GlideRecord, fileName: string, contentType: string, inputStream: GlideScriptableInputStream): string;
