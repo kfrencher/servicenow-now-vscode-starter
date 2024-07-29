@@ -4,7 +4,8 @@
     "lib/dts/serverAPI.d.ts",
     "dist",
     "build",
-    "gulpfile.js"
+    "gulpfile.js",
+    "**/*adrum*"
   ],
   "compilerOptions": {
     "module": "CommonJS",

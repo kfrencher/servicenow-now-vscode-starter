@@ -18,6 +18,46 @@ declare var GlideRelationship: any;
 declare var GlideStringUtil: any;
 declare var sn_assessment_core: any;
 
+declare class GlideChoice {
+    constructor(value: string, label: string);
+    constructor(value: string, label: string, sysId: string);
+    getLabel(): string;
+    getValue(): string;
+    getId(): string;
+    setId(id: string): void;
+    getImage(): string;
+    getSelected(): boolean;
+    setLabel(label: string): void;
+    setValue(value: string): void;
+    setImage(image: string): void;
+    setSelected(selected: boolean): void;
+    setParameter(name: string, value: any): void;
+    getParameter(name: string): any;
+}
+
+declare class GlideChoiceList {
+    sort(): void;
+    addNone(): GlideChoice;
+    removeNone(): void;
+    add(choice: GlideChoice): GlideChoice;
+    add(value: string, label: string): GlideChoice;
+    addFirst(value: string, label: string): void;
+    addAll(choice: GlideChoiceList): void;
+    getChoice(value: string): GlideChoice;
+    getChoiceNoTrim(value: string): GlideChoice;
+    removeChoice(value: string): GlideChoice;
+    removeChoice(index: number): GlideChoice;
+    getLabelOf(value:string): string;
+    getValueOf(label:string): string;
+    getSize(): number;
+    toXML(xmlDocument: XMLDocument): number;
+    /** Returns a Java JSONArray */
+    toJSON(): any;
+    /** Takes a GlideController */
+    getNullOverride(glideController: any): string;
+    static getChoiceList(tableName: string,fieldName: string): GlideChoiceList;
+}
+
 declare class GlideImportSetRun {
     constructor(importSetID: string);
     /** The sys_id of the transform histories [sys_import_set_run] record associatedwith the transform */
@@ -211,7 +251,7 @@ declare class GlideDateTime {
     /** Gets the date in the system time zone */
     getDate(): GlideDate;
     /** Gets the duration difference between two GlideDateTime values. Pass a single paramter which specifies milliseconds to subtract from the current GlideDateTime object */
-    subtract(start: GlideDateTime, end: GlideDateTime): GlideDuration;
+    subtract(start: GlideDateTime | number, end?: GlideDateTime): GlideDuration;
     /** Gets the date for the user's time zone */
     getLocalDate(): GlideDate;
     /** Returns a GlideTime object that represents the time portion of the GlideDateTime object in the user's time zone */
@@ -448,8 +488,8 @@ declare class GlideAggregate {
     [index:string]: any;
     constructor(tableName: string);
     /** Adds a query to the aggregate */
-    addQuery(field: string, operator: string, value: (string | string[] | boolean)): GlideQueryCondition;
-    addQuery(field: string, value: (string | string[] | boolean)): GlideQueryCondition;
+    addQuery(field: string, operator: string, value: any): GlideQueryCondition;
+    addQuery(field: string, value: any): GlideQueryCondition;
     /** Adds a NULL query to the aggregate */
     addNullQuery(field: string): GlideQueryCondition;
     /** Adds a NOT NULL query to the aggregate */
@@ -559,7 +599,7 @@ declare class GlideElement {
     /** Sets a date to a numeric value */
     setDateNumericValue(value: any): void;
     /** Gets date in numberic value */
-    dateNumericValue(value: string): number;
+    dateNumericValue(): number;
 }
 /** The scoped GlideElementDescriptor class provides information about individual fields */
 declare class GlideElementDescriptor {
@@ -609,8 +649,8 @@ declare class GlideRecord {
     /** Enables and disables the running of business rules and script engines. When disabled, inserts and updates are not audited */
     setWorkflow(e: boolean): void;
     /** Adds a filter to return records by specifying a field and value. You can use an optional 'operator' as a second parameter */
-    addQuery(name: string, value: (string | string[] | boolean)): GlideQueryCondition;
-    addQuery(name: string, operator: string, value: (string | string[] | boolean)): GlideQueryCondition;
+    addQuery(name: string, value: any): GlideQueryCondition;
+    addQuery(name: string, operator: string, value: any): GlideQueryCondition;
     /** Adds a filter to return active records */
     addActiveQuery(): GlideQueryCondition;
     /** Adds a filter to return records where the specified field is null */
@@ -762,7 +802,7 @@ declare class GlideServletResponse {
 /** The scoped GlideFilter class allows you to determine if a record meets a specified set of requirements. There is no constructor for scoped GlideFilter, it is accessed by using the global object 'GlideFilter' */
 declare class GlideFilter {
     /** Returns true when the record meets the filter condition */
-    static checkRecord(gr: GlideRecord, filter: string, value: boolean): boolean;
+    static checkRecord(gr: GlideRecord, filter: string, value?: boolean): boolean;
     /**
      * @param filter encoded query string in standard glide format
      * @param title Descriptive title for filter
@@ -920,7 +960,8 @@ interface gs {
     /** Gets a reference to the current Glide session */
     getSession(): GlideSession;
     /** Queues an event for the event manager */
-    eventQueue(name: string, record: GlideRecord, parm1?: string|null, parm2?: string|null, queue?: string): void;
+    eventQueue(name: string, record: GlideRecord, parm1?: string|string[]|null, parm2?: string|string[]|null, queue?: string): void;
+    eventQueueScheduled(name: string, record: GlideRecord, parm1: string|string[]|null, parm2: string|string[]|null, date: GlideDateTime | GlideElement): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
     urlDecode(url: string): string;
@@ -1806,4 +1847,22 @@ declare interface XMLDocument {
      * Look at the JavaDoc for org.w3c.dom.Node for more information.
      */
     getNode(xpath: string): any;
+}
+
+declare class GlideSysAttachment {
+    /** Returns comma delimited list of attachments that were copied */
+    copy(sourceTable: string, sourceId: string, targetTable: string, targetId: string): string;
+    deleteAttachment(attachmentId: string): void;
+    /** Returns unexecuted GlideRecord with list of attachment metadata */
+    getAttachments(tableName: string, sysId: string): GlideRecord;
+    /** Attachment contents as a string. Returns up to 5MB of data */
+    getContent(sysAttachment: GlideRecord): string;
+    /** Attachment contents as a base64 encoded string. Returns up to 5MB of data */
+    getContentBase64(sysAttachment: GlideRecord): string;
+    /** Returns stream given sys_id of an attachment. Can use the GlideTextReader API to read the content of stream */
+    getContentStream(sysId: string): GlideScriptableInputStream;
+    /** Attaches a specified attachment to the specified record. Returns attachment sys_id. Returns null if the attachment was not added */
+    write(record: GlideRecord, fileName: string, contentType: string, content: string): string;
+    writeBase64(record: GlideRecord, fileName: string, contentType: string, contentAsBase64: string): string;
+    writeContentStream(record: GlideRecord, fileName: string, contentType: string, inputStream: GlideScriptableInputStream): string;
 }
