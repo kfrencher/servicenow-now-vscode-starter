@@ -668,7 +668,7 @@ declare class GlideRecord {
     /** Sets the maximum number of records in the GlideRecord to be fetched in the next query */
     setLimit(limit: number): void;
     /** Sets a range of rows to be returned by subsequent queries. If forceCount is true, getRowCount() method will return all possible records */
-    chooseWindow(firstRow: number, lastRow: number, forceCount: boolean): void;
+    chooseWindow(firstRow: number, lastRow: number, forceCount?: boolean): void;
     /** Determines if the Access Control Rules which include the user's roles permit inserting new records in this table */
     canCreate(): boolean;
     /** Determines if the Access Control Rules which include the user's roles permit deleting records in this table */
@@ -1157,160 +1157,151 @@ interface GlideOAuthClientResponse_proto {
     getResponseCode(): string;
 }
 /** Web Services API, to send a message to a web service provider */
-declare const sn_ws: sn_ws;
-interface sn_ws {
+declare namespace sn_ws {
     /** Instantiates a RESTMessageV2 object. When you have a REST message record, you can add the optional name and methodName information */
-    RESTMessageV2: RESTMessageV2;
+    class RESTMessageV2 {
+        constructor();
+        /** Send the REST message to the endpoint */
+        execute(): RESTResponseV2;
+        /** Send the REST message to the endpoint asynchronously. The instance does not wait for a response from the web service provider when making asynchronous calls */
+        executeAsync(): RESTResponseV2;
+        /** The HTTP method this REST message performs, such as GET or PUT. You must set an HTTP method when using the RESTMessageV2() constructor with no parameters */
+        setHttpMethod(method: string): void;
+        /** Set the amount of time the REST message waits for a response from the REST provider */
+        setHttpTimeout(timeoutMs: number): void;
+        /** Set basic authentication headers for the REST message */
+        setBasicAuth(userName: string, userPass: string): void;
+        /** Set the mutual authentication protocol profile for the REST message */
+        setMutualAuth(profileName: string): void;
+        /** Set the credentials for the REST message using an existing basic auth or OAuth 2.0 profile. Valid types are 'basic' and 'oauth2'. Valid profileIds are the sys_id of a Basic Auth Configuration [sys_auth_profile_basic] record or an OAuth Entity Profile [oauth_entity_profile] record */
+        setAuthenticationProfile(type: string, profileId: string): void;
+        /** Associate outbound requests and the resulting response record in the ECC queue */
+        setEccCorrelator(correlator: string): void;
+        /** Override a value from the database by writing to the REST message payload */
+        setEccParameter(name: string, value: string): void;
+        /** Configure the REST message to communicate through a MID Server */
+        setMIDServer(midServer: string): void;
+        /** Set the endpoint for the REST message */
+        setEndpoint(endpoint: string): void;
+        /** Set the ECC topic for the REST message. The default ECC topic is RESTProbe if topic is not set. In most cases it is unnecessary to set ECC topic */
+        setEccTopic(topic: string): void;
+        /** Set the body content of a PUT or POST request. Mutually exclusive with setRequestBodyFromAttachment */
+        setRequestBody(body: string): void;
+        /** Uses the specified attachment as the request body of this REST Message. Mutually exclusive with setRequestBody */
+        setRequestBodyFromAttachment(attachmentSysId: string): void;
+        /** Setup the response body to be saved into the specified attachment when the request is sent. encryptCtxSysId is optional */
+        saveResponseBodyAsAttachment(tableName: string, recordSysId: string, filename: string, encryptCtxSysId: string): void;
+        /** Set an HTTP header to the specified value */
+        setRequestHeader(name: string, value: string): void;
+        /** Set a REST message function variable to the specified value */
+        setStringParameter(name: string, value: string): void;
+        /** Set a REST message function variable to the specified value without escaping XML reserved characters */
+        setStringParameterNoEscape(name: string, value: string): void;
+        /** Append a name-value parameter to the request URL */
+        setQueryParameter(name: string, value: string): void;
+        /** Get the content of the REST message body */
+        getRequestBody(): string;
+        /** Get the URL of the endpoint for the REST message */
+        getEndpoint(): string;
+        /** Get the ECC topic for the REST message */
+        getEccTopic(): string;
+        /** Get the value for an HTTP header specified by the REST client */
+        getRequestHeader(headerName: string): string;
+        /** Get name and value for all HTTP headers specified by the REST client */
+        getRequestHeaders(): Object;
+    }
     /** The RESTResponseV2 API allows you to use the data returned by an outbound REST message in JavaScript code. A RESTResponseV2 object is returned by the RESTMessageV2 functions execute() and executeAsync() */
-    RESTResponseV2: RESTResponseV2;
+    class RESTResponseV2 {
+        constructor();
+        /** Set the amount of time the instance waits for the response */
+        waitForResponse(timeoutSecs: number): void;
+        /** Get the numeric HTTP status code returned by the REST provider */
+        getStatusCode(): number;
+        /** Get the value for a specified header */
+        getHeader(name: string): string;
+        /** Deprecated -- use getAllHeaders instead */
+        getHeaders(): Object;
+        /** Get all headers returned in the REST response and the associated values */
+        getAllHeaders(): GlideHTTPHeader[];
+        /** Get the content of the REST response body */
+        getBody(): string;
+        /** Indicate if there was an error during the REST transaction */
+        haveError(): boolean;
+        /** Get the numeric error code, if there was an error during the REST transaction */
+        getErrorCode(): number;
+        /** Get the error message if there was an error during the REST transaction */
+        getQueryString(): string;
+        /** Get the query used for this request */
+        getErrorMessage(): string;
+    }
     /** Instantiates a SOAPMessageV2 object. Specify optional message and a function if there is a SOAP message record */
-    SOAPMessageV2: SOAPMessageV2;
+    class SOAPMessageV2 {
+        constructor();
+        /** Send the SOAP Message to the endpoint */
+        execute(): SOAPResponse;
+        /** Send the SOAP Message to the endpoint asynchronously */
+        executeAsync(): SOAPResponse;
+        /** Define the SOAP action this SOAP message performs */
+        setSOAPAction(soapAction: string): void;
+        /** Set the amount of time the request waits for a response from the web service provider before the request times out */
+        setHttpTimeout(timeoutMs: number): void;
+        /** Set basic authentication headers for the SOAP message */
+        setBasicAuth(userName: string, userPass: string): void;
+        /** Set the mutual authentication protocol profile for the SOAP message */
+        setMutualAuth(profileName: string): void;
+        /** Set web service security values for the SOAP message */
+        setWSSecurity(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
+        /** Set a variable from the SOAP message record to the specified value */
+        setStringParameter(name: string, value: string): void;
+        /** Set a variable from the SOAP message record to the specified value without escaping XML reserved characters */
+        setStringParameterNoEscape(name: string, value: string): void;
+        /** Associate outbound requests and the resulting response record in the ECC queue */
+        setEccCorrelator(correlator: string): void;
+        /** Override a value from the database by writing to the SOAP message payload */
+        setEccParameter(name: string, value: string): void;
+        /** Set an HTTP header in the SOAP message to the specified value */
+        setRequestHeader(headerName: string, headerValue: string): void;
+        /** Set the body content to send to the web service provider */
+        setRequestBody(requestBody: string): void;
+        /** Set the endpoint for the SOAP message */
+        setEndpoint(endpoint: string): void;
+        /** Configure the SOAP message to be sent through a MID Server */
+        setMIDServer(midServerName: string): void;
+        /** Get the content of the SOAP message body */
+        getRequestBody(): string;
+        /** Get the URL of the endpoint for the SOAP message */
+        getEndpoint(): string;
+        /** Get the value for an HTTP header specified by the SOAP client */
+        getRequestHeader(headerName: string): string;
+        /** Get name and value for all HTTP headers specified by the SOAP client */
+        getRequestHeaders(): Object;
+        /** Set WS-Security Username token */
+        setWSSecurityUsernameToken(username: string, password: string): void;
+        /** Set WS-Security X.509 token */
+        setWSSecurityX509Token(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
+    }
     /** The SOAPResponseV2 API allows you to use the data returned by an outbound SOAP message in JavaScript code. A SOAPResponseV2 object is returned by the SOAPMessageV2 functions execute() and executeAsync() */
-    SOAPResponseV2: SOAPResponseV2;
-}
-/** Instantiates a RESTMessageV2 object. When you have a REST message record, you can add the optional name and methodName information */
-declare class RESTMessageV2 {
-    constructor();
-    /** Send the REST message to the endpoint */
-    execute(): RESTResponseV2;
-    /** Send the REST message to the endpoint asynchronously. The instance does not wait for a response from the web service provider when making asynchronous calls */
-    executeAsync(): RESTResponseV2;
-    /** The HTTP method this REST message performs, such as GET or PUT. You must set an HTTP method when using the RESTMessageV2() constructor with no parameters */
-    setHttpMethod(method: string): void;
-    /** Set the amount of time the REST message waits for a response from the REST provider */
-    setHttpTimeout(timeoutMs: number): void;
-    /** Set basic authentication headers for the REST message */
-    setBasicAuth(userName: string, userPass: string): void;
-    /** Set the mutual authentication protocol profile for the REST message */
-    setMutualAuth(profileName: string): void;
-    /** Set the credentials for the REST message using an existing basic auth or OAuth 2.0 profile. Valid types are 'basic' and 'oauth2'. Valid profileIds are the sys_id of a Basic Auth Configuration [sys_auth_profile_basic] record or an OAuth Entity Profile [oauth_entity_profile] record */
-    setAuthenticationProfile(type: string, profileId: string): void;
-    /** Associate outbound requests and the resulting response record in the ECC queue */
-    setEccCorrelator(correlator: string): void;
-    /** Override a value from the database by writing to the REST message payload */
-    setEccParameter(name: string, value: string): void;
-    /** Configure the REST message to communicate through a MID Server */
-    setMIDServer(midServer: string): void;
-    /** Set the endpoint for the REST message */
-    setEndpoint(endpoint: string): void;
-    /** Set the ECC topic for the REST message. The default ECC topic is RESTProbe if topic is not set. In most cases it is unnecessary to set ECC topic */
-    setEccTopic(topic: string): void;
-    /** Set the body content of a PUT or POST request. Mutually exclusive with setRequestBodyFromAttachment */
-    setRequestBody(body: string): void;
-    /** Uses the specified attachment as the request body of this REST Message. Mutually exclusive with setRequestBody */
-    setRequestBodyFromAttachment(attachmentSysId: string): void;
-    /** Setup the response body to be saved into the specified attachment when the request is sent. encryptCtxSysId is optional */
-    saveResponseBodyAsAttachment(tableName: string, recordSysId: string, filename: string, encryptCtxSysId: string): void;
-    /** Set an HTTP header to the specified value */
-    setRequestHeader(name: string, value: string): void;
-    /** Set a REST message function variable to the specified value */
-    setStringParameter(name: string, value: string): void;
-    /** Set a REST message function variable to the specified value without escaping XML reserved characters */
-    setStringParameterNoEscape(name: string, value: string): void;
-    /** Append a name-value parameter to the request URL */
-    setQueryParameter(name: string, value: string): void;
-    /** Get the content of the REST message body */
-    getRequestBody(): string;
-    /** Get the URL of the endpoint for the REST message */
-    getEndpoint(): string;
-    /** Get the ECC topic for the REST message */
-    getEccTopic(): string;
-    /** Get the value for an HTTP header specified by the REST client */
-    getRequestHeader(headerName: string): string;
-    /** Get name and value for all HTTP headers specified by the REST client */
-    getRequestHeaders(): Object;
-}
-/** The RESTResponseV2 API allows you to use the data returned by an outbound REST message in JavaScript code. A RESTResponseV2 object is returned by the RESTMessageV2 functions execute() and executeAsync() */
-declare class RESTResponseV2 {
-    constructor();
-    /** Set the amount of time the instance waits for the response */
-    waitForResponse(timeoutSecs: number): void;
-    /** Get the numeric HTTP status code returned by the REST provider */
-    getStatusCode(name: string): number;
-    /** Get the value for a specified header */
-    getHeader(name: string): string;
-    /** Deprecated -- use getAllHeaders instead */
-    getHeaders(): Object;
-    /** Get all headers returned in the REST response and the associated values */
-    getAllHeaders(): GlideHTTPHeader[];
-    /** Get the content of the REST response body */
-    getBody(): string;
-    /** Indicate if there was an error during the REST transaction */
-    haveError(): boolean;
-    /** Get the numeric error code, if there was an error during the REST transaction */
-    getErrorCode(): number;
-    /** Get the error message if there was an error during the REST transaction */
-    getQueryString(): string;
-    /** Get the query used for this request */
-    getErrorMessage(): string;
-}
-/** Instantiates a SOAPMessageV2 object. Specify optional message and a function if there is a SOAP message record */
-declare class SOAPMessageV2 {
-    constructor();
-    /** Send the SOAP Message to the endpoint */
-    execute(): SOAPResponse;
-    /** Send the SOAP Message to the endpoint asynchronously */
-    executeAsync(): SOAPResponse;
-    /** Define the SOAP action this SOAP message performs */
-    setSOAPAction(soapAction: string): void;
-    /** Set the amount of time the request waits for a response from the web service provider before the request times out */
-    setHttpTimeout(timeoutMs: number): void;
-    /** Set basic authentication headers for the SOAP message */
-    setBasicAuth(userName: string, userPass: string): void;
-    /** Set the mutual authentication protocol profile for the SOAP message */
-    setMutualAuth(profileName: string): void;
-    /** Set web service security values for the SOAP message */
-    setWSSecurity(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
-    /** Set a variable from the SOAP message record to the specified value */
-    setStringParameter(name: string, value: string): void;
-    /** Set a variable from the SOAP message record to the specified value without escaping XML reserved characters */
-    setStringParameterNoEscape(name: string, value: string): void;
-    /** Associate outbound requests and the resulting response record in the ECC queue */
-    setEccCorrelator(correlator: string): void;
-    /** Override a value from the database by writing to the SOAP message payload */
-    setEccParameter(name: string, value: string): void;
-    /** Set an HTTP header in the SOAP message to the specified value */
-    setRequestHeader(headerName: string, headerValue: string): void;
-    /** Set the body content to send to the web service provider */
-    setRequestBody(requestBody: string): void;
-    /** Set the endpoint for the SOAP message */
-    setEndpoint(endpoint: string): void;
-    /** Configure the SOAP message to be sent through a MID Server */
-    setMIDServer(midServerName: string): void;
-    /** Get the content of the SOAP message body */
-    getRequestBody(): string;
-    /** Get the URL of the endpoint for the SOAP message */
-    getEndpoint(): string;
-    /** Get the value for an HTTP header specified by the SOAP client */
-    getRequestHeader(headerName: string): string;
-    /** Get name and value for all HTTP headers specified by the SOAP client */
-    getRequestHeaders(): Object;
-    /** Set WS-Security Username token */
-    setWSSecurityUsernameToken(username: string, password: string): void;
-    /** Set WS-Security X.509 token */
-    setWSSecurityX509Token(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
-}
-/** The SOAPResponseV2 API allows you to use the data returned by an outbound SOAP message in JavaScript code. A SOAPResponseV2 object is returned by the SOAPMessageV2 functions execute() and executeAsync() */
-declare class SOAPResponseV2 {
-    constructor();
-    /** Set the amount of time the instance waits for a response */
-    waitForResponse(timeoutSecs: number): void;
-    /** Get the numeric HTTP status code returned by the SOAP provider */
-    getStatusCode(): number;
-    /** Get the value for a specified HTTP header */
-    getHeader(name: string): string;
-    /** Deprecated -- use getAllHeaders instead */
-    getHeaders(): Object;
-    /** Get all HTTP headers returned in the SOAP response and the associated values */
-    getAllHeaders(): GlideHTTPHeader[];
-    /** Get the content of the SOAP response body */
-    getBody(): string;
-    /** Indicate if there was an error during the SOAP transaction */
-    haveError(): boolean;
-    /** Get the numeric error code if there was an error during the SOAP transaction */
-    getErrorCode(): number;
-    /** Get the error message if there was an error during the SOAP transaction */
-    getErrorMessage(): string;
+    class SOAPResponseV2 {
+        constructor();
+        /** Set the amount of time the instance waits for a response */
+        waitForResponse(timeoutSecs: number): void;
+        /** Get the numeric HTTP status code returned by the SOAP provider */
+        getStatusCode(): number;
+        /** Get the value for a specified HTTP header */
+        getHeader(name: string): string;
+        /** Deprecated -- use getAllHeaders instead */
+        getHeaders(): Object;
+        /** Get all HTTP headers returned in the SOAP response and the associated values */
+        getAllHeaders(): GlideHTTPHeader[];
+        /** Get the content of the SOAP response body */
+        getBody(): string;
+        /** Indicate if there was an error during the SOAP transaction */
+        haveError(): boolean;
+        /** Get the numeric error code if there was an error during the SOAP transaction */
+        getErrorCode(): number;
+        /** Get the error message if there was an error during the SOAP transaction */
+        getErrorMessage(): string;
+    }
 }
 /** These objects are relevant to Scripted REST APIs and are accessed via the request or response input parameters to Scripted APIs */
 declare const sn_ws_int: sn_ws_int;
@@ -1815,5 +1806,4 @@ declare interface XMLDocument {
      * Look at the JavaDoc for org.w3c.dom.Node for more information.
      */
     getNode(xpath: string): any;
-
 }
