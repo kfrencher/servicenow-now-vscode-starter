@@ -1,5 +1,6 @@
 {
     "name": "servicenow-now-vscode-starter",
+    "publisher":"KLF",
     "displayName": "servicenow.now-vscode-starter",
     "description": "Sets up configuration files for ServiceNow.now-vscode extension",
     "version": "0.0.1",
