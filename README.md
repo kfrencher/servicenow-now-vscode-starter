@@ -4,6 +4,7 @@ Overwrites the default configuration files delivered with the ServiceNow Extensi
 
 To build extension run:
 ```
+npm install -g @vscode/vsce
 $ cd myExtension
 $ vsce package
 ```
