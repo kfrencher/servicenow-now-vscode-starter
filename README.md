@@ -2,6 +2,13 @@
 
 Overwrites the default configuration files delivered with the ServiceNow Extension for VS Code
 
+To build extension run:
+```
+npm install -g @vscode/vsce
+$ cd myExtension
+$ vsce package
+```
+
 Once extension is installed run `SN Starter: Init` command and the default configuration files will be overwritten.
 
 This will configure the following files:
