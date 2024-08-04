@@ -24,7 +24,11 @@ This extension will:
 }
 ```
 
--   Adds the following type files to the lib/dts directory: - updatedClientAPI.d.ts - updatedServerAPI.d.ts - g_klf.js - klf.js
+-   Adds the following type files to the lib/dts directory:
+    - updatedClientAPI.d.ts
+    - updatedServerAPI.d.ts
+    - g_klf.js
+    - klf.js
     > NOTE: g_klf.js and klf.js are generated from servicenow-klf-global and servicenow-klf repositories.
 -   Following chages are made to tsconfig.json. These changes will enable strict null checking and type checking in JS files:\
     Changes target to es2020.\
