@@ -1,270 +1,3 @@
-//@ts-ignore -- I know this throws an error, but it allows VSCode to autocomplete the methods
-var x_912467_klf = x_912467_klf || {};
-
-x_912467_klf.CalendarCreator = (function() {
-    return {
-        fiscalQuarterCalendarName: 'Fiscal Quarter',
-        /**
-         * business_calendar that holds calendar data
-         * @param {string} calendarName
-         * @returns {GlideRecord} business_calendar
-         */
-        getCalendarByName: function(calendarName) {
-            var calender = new GlideRecord('business_calendar');
-            if (calender.get('calendar_name', calendarName)) {
-                return calender;
-            } else {
-                throw 'Could not find calendar using name: ' + calendarName;
-            }
-        },
-        /**
-         * Returns the span name
-         * @param {string} quarterName One of Ql, Q2, Q3, or Q4
-         * @param {number} year
-         * @returns {GlideRecord} business_calendar_span_name
-         */
-        getQuarterSpanName: function(quarterName, year) {
-            var calendar = this.getCalendarByName(this.fiscalQuarterCalendarName);
-            var quarter = new GlideRecord('business_calendar_span_name');
-            quarter.addQuery('calendar', calendar.getUniqueValue());
-            quarter.addQuery('short_name', this.getFiscalQuarterSpanNameShortName(quarterName, year));
-            quarter.query();
-            if (quarter.next()) {
-                return quarter;
-            } else {
-                throw 'Could not find quarter name using calendar: ' + calendar.getDisplayValue() + ' and quarter: ' + quarterName + ' and year: ' + year;
-            }
-        },
-        /**
-         * Uses the quarter and year to return a pair that represent the start and end
-         * date of the quarter
-         * @param {string} quarterName One of Ql, Q2, Q3, Q4
-         * @param {number} year
-         * @returns {[string,string]} A pair representing the start and end date
-         */
-        getQuarterDateRange: function(quarterName, year) {
-            if (quarterName == 'Ql') {
-                return [year - 1 + '-10-01 00:00:00', year + '-01-01 00:00:00'];
-            } else if (quarterName == 'Q2') {
-                return [year + '-01-01 00:00:00', year + '-04-01 00:00:00'];
-            } else if (quarterName == 'Q3') {
-                return [year + '-04-01 00:00:00', year + '-07-01 00:00:00'];
-            } else if (quarterName == 'Q4') {
-                return [year + '-07-01 00:00:00', year + '-10-01 00:00:00'];
-            } else {
-                throw 'No date range defined for quarter: ' + quarterName;
-            }
-        },
-        /**
-         * Creates a business calendar span for the quarter and
-         * year
-         * @param {string} quarterName One of Ql, Q2, Q3, Q4
-         * @param {number} year
-         * @returns {GlideRecord} a persisted business_calendar_span
-         */
-        createQuarter: function(quarterName, year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalQuarterCalendarName).getUniqueValue();
-            var spanNameSysId = this.getQuarterSpanName(quarterName, year).getUniqueValue();
-            var calendarSpan = new GlideRecord('business_calendar_span');
-            var dateRange = this.getQuarterDateRange(quarterName, year);
-            calendarSpan.addQuery('calendar', calendarSysId);
-            calendarSpan.addQuery('start', dateRange[0]);
-            calendarSpan.addQuery('end', dateRange[1]);
-            calendarSpan.query();
-            if (!calendarSpan.next()) {
-                calendarSpan.newRecord();
-            }
-            calendarSpan.start = dateRange[0];
-            calendarSpan.end = dateRange[1];
-            calendarSpan.calendar = calendarSysId;
-            calendarSpan.span_name = spanNameSysId;
-            calendarSpan.update();
-            return calendarSpan;
-        },
-        /**
-         * Creates 4 fiscal quarters for the provided year. The quarters
-         * are business_calendar_span records
-         * @param {number} year
-         * @returns {[GlideRecord, GlideRecord, GlideRecord, GlideRecord]} the four fiscal quarters business_calendar_span
-         */
-        createFiscalYearByQuarters: function(year) {
-            return [
-                this.createQuarter('Ql', year),
-                this.createQuarter('Q2', year),
-                this.createQuarter('Q3', year),
-                this.createQuarter('Q4', year)
-            ];
-        },
-        /**
-         * Creates all the calendar entries by quarter beginning at the start year
-         * and ending at the end year
-         * @param {number} startYear
-         * @param {number} endYear
-         */
-        createFiscalQuarterEntries: function(startYear, endYear) {
-            for (var year = startYear; year <= endYear; year++) {
-                this.createFiscalYearByQuarters(year);
-            }
-        },
-        /**
-         * Creates the span names for the fiscal quarters for a calendar year
-         * @param {number} startYear
-         * @param {number} endYear
-         */
-        createFiscalQuarterNameEntries: function(startYear, endYear) {
-            for (var year = startYear; year <= endYear; year++) {
-                this.createFiscalQuartersNameEntriesByYear(year);
-            }
-        },
-        /**
-        * Creates 4 fiscal quarter span names for the provided year. The names
-        * are business_calendar_span_name records. They serve as the labels for the
-        * calendar entries
-        * @param {number} year
-        * @returns {[GlideRecord, GlideRecord, GlideRecord, GlideRecord]}
-        the four fiscal quarters business_calendar_span
-        */
-        createFiscalQuartersNameEntriesByYear: function(year) {
-            return [
-                this.createFiscalQuarterName('Ql', year),
-                this.createFiscalQuarterName('Q2', year),
-                this.createFiscalQuarterName('Q3', year),
-                this.createFiscalQuarterName('Q4', year)
-            ];
-        },
-        /**
-         * Returns the fiscal quarter span name short name
-         * @param {string} quarter One of Ql, Q2, Q3, or Q4
-         * @param {number} year
-         * @returns {string}
-         */
-        getFiscalQuarterSpanNameShortName: function(quarter, year) {
-            return year + ' ' + quarter;
-        },
-        /**
-         *
-         * @param {string} quarter
-         * @param {number} year
-         */
-        createFiscalQuarterName: function(quarter, year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalQuarterCalendarName).getUniqueValue();
-            var spanName = new GlideRecord('business_calendar_span_name');
-            var shortName = this.getFiscalQuarterSpanNameShortName(quarter, year);
-            spanName.addQuery('short_name', shortName);
-            spanName.addQuery('calendar', calendarSysId);
-            spanName.query();
-            if (!spanName.next()) {
-                spanName.newRecord();
-            }
-            spanName.short_name = shortName;
-            spanName.long_name = 'Fiscal Quarter ' + quarter;
-            spanName.label = 'FY ' + year + ' ' + quarter;
-            spanName.calendar = calendarSysId;
-            spanName.update();
-            return spanName;
-        },
-
-        fiscalYearCalendarName: 'Fiscal Year',
-
-        /**
-         * Uses the year to return a pair that represent the start and end
-         * date of the year
-         * @param {number} year
-         * @returns {[string,string]} A pair representing the start and end
-         */
-        getYearDateRange: function(year) {
-            return [year - 1 + '-10-01 00:00:00', year + '-10-01'];
-        },
-
-        /**
-         * Returns the span name
-         * @param {number} year
-         * @returns {GlideRecord} business_calendar_span_name
-         */
-        getYearSpanName: function(year) {
-            var calendar = this.getCalendarByName(this.fiscalYearCalendarName);
-            var yearSpanName = new GlideRecord('business_calendar_span_name');
-            yearSpanName.addQuery('calendar', calendar.getUniqueValue());
-            yearSpanName.addQuery('short_name', year.toString());
-            yearSpanName.query();
-            if (yearSpanName.next()) {
-                return yearSpanName;
-            } else {
-                throw 'Could not find year name using calendar: ' +
-                    calendar.getDisplayValue() + ' and year: ' + year;
-            }
-        },
-        /** 
-         * Creates a business calendar span for the quarter and
-         * year
-         * @param {number} year
-         * @returns {GlideRecord} a persisted business_calendar_span
-         */
-        createYear: function(year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalYearCalendarName).getUniqueValue();
-            var spanNameSysId = this.getYearSpanName(year).getUniqueValue();
-            var calendarSpan = new GlideRecord('business_calendar_span');
-            var dateRange = this.getYearDateRange(year);
-            calendarSpan.addQuery('calendar', calendarSysId);
-            calendarSpan.addQuery('start', dateRange[0]);
-            calendarSpan.addQuery('end', dateRange[1]);
-            calendarSpan.query();
-            if (!calendarSpan.next()) {
-                calendarSpan.newRecord();
-            }
-            calendarSpan.start = dateRange[0];
-            calendarSpan.end = dateRange[1];
-            calendarSpan.calendar = calendarSysId;
-            calendarSpan.span_name = spanNameSysId;
-            calendarSpan.update();
-            return calendarSpan;
-        },
-        /**
-         * Creates all the calendar entries by quarter beginning at the start year
-         * and ending at the end year
-         * @param {number} startYear
-         * @param {number} endYear
-         */
-        createFiscalYearEntries: function(startYear, endYear) {
-            for (var year = startYear; year <= endYear; year++) {
-                this.createYear(year);
-            }
-        },
-        /**
-         * Creates the span names for the fiscal calendar year
-         * @param {number} startYear
-         * @param {number} endYear
-         */
-        createFiscalYearNameEntries: function(startYear, endYear) {
-            for (var year = startYear; year <= endYear; year++) {
-                this.createFiscalYearName(year);
-            }
-        },
-        /**
-         *
-         * @param {number} year
-         * @returns {GlideRecord}
-         */
-        createFiscalYearName: function(year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalYearCalendarName).getUniqueValue();
-            var spanName = new GlideRecord('business_calendar_span_name');
-            /**@ts-ignore */
-            var shortName = year.toString();
-            spanName.addQuery('short_name', shortName);
-            spanName.addQuery('calendar', calendarSysId);
-            spanName.query();
-            if (!spanName.next()) {
-                spanName.newRecord();
-            }
-            spanName.short_name = shortName;
-            spanName.long_name = 'Fiscal Year ' + year;
-            spanName.label = 'FY ' + year;
-            spanName.calendar = calendarSysId;
-            spanName.update();
-            return spanName;
-        }
-    };
-})();
 //@ts-ignore
 var x_912467_klf = x_912467_klf || {};
 /**
@@ -404,6 +137,39 @@ x_912467_klf.DateUtils = (function() {
             return daysAgo.getDate();
         }
     };
+})();
+//@ts-ignore
+var x_912467_klf = x_912467_klf || {};
+/**
+ * @class x_snb_common.Evaluator
+ * Eval function for scoped apps because you can't execute
+ * GlideEvaluator.eval from scoped application
+ */
+x_912467_klf.Evaluator = (function () {
+
+	function getFixScript() {
+		var fixScriptName = 'KLF Script Eval';
+		var fixScript = new GlideRecord('sys_script_fix');
+		if(!fixScript.get('name', fixScriptName)) {
+			fixScript.newRecord();
+			fixScript.record_for_rollback = false;
+			fixScript.description = 'Created automatically by x_912467_klf.Evaluator to dynamically execute scripts. ' +
+				'ServiceNow does not allow GlideEvaluator.eval from scoped applications. ' +
+				'I am using a fix script to execute dynamic scripts. The script field is left intentionally blank.';
+			fixScript.name = fixScriptName;
+			fixScript.update();
+		}
+		return fixScript;
+	}
+
+    return {
+		evaluate: function(script) {
+			var fixScript = getFixScript();
+			fixScript.script = script;
+			return new GlideScopedEvaluator().evaluateScript(fixScript);
+		}
+	};
+
 })();
 //@ts-ignore
 var x_912467_klf = x_912467_klf || {};
@@ -571,7 +337,7 @@ var x_912467_klf = x_912467_klf || {};
  * Utility functions for sys_user_group
  */
 x_912467_klf.GroupUtils = (function() {
-    var glideRecordUtils = new global.KLF_GlideRecordUtils();
+    const glideRecordUtils = new global.KLF_GlideRecordUtils();
 
     class GroupUtils {
 
@@ -716,45 +482,44 @@ x_912467_klf.ListMetric = (function() {
         return mi.hasNext();
     }
 
-    /**
-     * @param {GlideRecord} glideRecord 
-     * @param {GlideRecord} metricDefinition 
-     */
-    function createMetric(glideRecord, metricDefinition) {
-        var fieldName = metricDefinition.getValue('field');
-        gs.debug('current operation: ' + glideRecord.operation());
-        if (!glideRecord[fieldName].nil()) {
-            var values = glideRecord.getValue(fieldName).split(',');
-            var savedValues = getSavedValues(glideRecord.getUniqueValue(), fieldName);
-            var removedValues = new global.ArrayUtil().diff(savedValues, values);
-            values.forEach(function(value) {
-                if (!exists(glideRecord.getUniqueValue(), fieldName, value)) {
-                    var mi = new global.MetricUtils().createMetricInstance(glideRecord, metricDefinition);
-                    mi.value = value;
-                    mi.update();
-                }
-            });
-
-            if (removedValues.length > 0) {
-                var mi = new GlideRecord('metric_instance');
-                mi.addQuery('id', glideRecord.getUniqueValue());
-                mi.addQuery('definition', metricDefinition.getUniqueValue());
-                mi.addQuery('value', 'IN', removedValues);
-                mi.deleteMultiple();
-            }
-        } else {
-            var mi2 = new GlideRecord('metric_instance');
-            mi2.addQuery('id', glideRecord.getUniqueValue());
-            mi2.addQuery('definition', metricDefinition.getUniqueValue());
-            mi2.query();
-            while (mi2.next()) {
-                mi2.deleteRecord();
-            }
-        }
-    }
 
     return {
-        createMetric: createMetric
+        /**
+         * @param {GlideRecord} glideRecord 
+         * @param {GlideRecord} metricDefinition 
+         */
+        createMetric: function(glideRecord, metricDefinition) {
+            var fieldName = metricDefinition.getValue('field');
+            gs.debug('current operation: ' + glideRecord.operation());
+            if (!glideRecord[fieldName].nil()) {
+                var values = glideRecord.getValue(fieldName).split(',');
+                var savedValues = getSavedValues(glideRecord.getUniqueValue(), fieldName);
+                var removedValues = new global.ArrayUtil().diff(savedValues, values);
+                values.forEach(function(value) {
+                    if (!exists(glideRecord.getUniqueValue(), fieldName, value)) {
+                        var mi = new global.MetricUtils().createMetricInstance(glideRecord, metricDefinition);
+                        mi.value = value;
+                        mi.update();
+                    }
+                });
+
+                if (removedValues.length > 0) {
+                    var mi = new GlideRecord('metric_instance');
+                    mi.addQuery('id', glideRecord.getUniqueValue());
+                    mi.addQuery('definition', metricDefinition.getUniqueValue());
+                    mi.addQuery('value', 'IN', removedValues);
+                    mi.deleteMultiple();
+                }
+            } else {
+                var mi2 = new GlideRecord('metric_instance');
+                mi2.addQuery('id', glideRecord.getUniqueValue());
+                mi2.addQuery('definition', metricDefinition.getUniqueValue());
+                mi2.query();
+                while (mi2.next()) {
+                    mi2.deleteRecord();
+                }
+            }
+        }
     };
 
 })();

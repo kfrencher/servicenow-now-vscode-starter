@@ -964,6 +964,7 @@ interface gs {
     eventQueueScheduled(name: string, record: GlideRecord, parm1: string|string[]|null, parm2: string|string[]|null, date: GlideDateTime | GlideElement): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
+    setProperty(key: string, value: any);
     urlDecode(url: string): string;
     urlEncode(url: string): string;
     base64Decode(s: string): string;

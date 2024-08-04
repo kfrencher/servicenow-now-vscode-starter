@@ -1,11 +1,8 @@
 {
-    "name": "typescript-test",
+    "name": "package-gulp",
     "version": "1.0.0",
-    "description": "",
+    "description": "This is the package.json file for the gulp project. Use this instead of the package.json file when running the gulp script",
     "main": "index.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
     "author": "",
     "license": "ISC",
     "dependencies": {
