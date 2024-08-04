@@ -1,6 +1,6 @@
 ## Features
 
-Overwrites the default configuration files delivered with the ServiceNow Extension for VS Code.
+ServiceNow makes a VS Code extension called _ServiceNow Extension for VS Code_. That extension comes with some default configuration for VS Code. The extension configures visibility of some files and folders, eslint configuration, and tsconfig.json. This extension overwrites the default configuration files delivered with the _ServiceNow Extension for VS Code_.
 
 # Usage
 
