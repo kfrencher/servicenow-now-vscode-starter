@@ -4,6 +4,7 @@ const clean = require('gulp-clean');
 const mergeStream = require('merge-stream');
 const JSON5 = require('json5');
 const log = require('fancy-log');
+const ignore = require('gulp-ignore');
 
 function getScopedAppInfo() {
     // read file into a variable
@@ -23,6 +24,8 @@ gulp.task('concat', function() {
     const mergedLibraries = scopedAppInfo.map(function(appInfo) {
         const name = appInfo.name.toLowerCase().replace(' ', '_');
         return gulp.src(`${appInfo.scriptIncludePath}/**/*.js`)
+            .pipe(ignore.exclude('**/*Test.script.js'))
+            .pipe(ignore.exclude('KLF_TestJasmineMatchers.script.js'))
             .on('end', () => log('Starting concatenating ' + appInfo.scriptIncludePath + '.js'))
             .pipe(concat(name + '.js'))
             .on('end', () => log('Finished concatenating ' + name + '.js'));

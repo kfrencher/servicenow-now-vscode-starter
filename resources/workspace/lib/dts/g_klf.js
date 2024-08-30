@@ -2444,55 +2444,87 @@ KLF_LdapGroupService.prototype = {
 
 global.KLF_LdapGroupService = KLF_LdapGroupService;
 /**
+ * This script includes functions for working with metrics. Metrics are located in the Metrics module.
+ * They are used to generated data associated with a record so that it can be used in reports.
  * 
- * @param {*} outputs 
- * @param {*} steps 
- * @param {*} params 
- * @param {*} stepResult 
- * @param {*} assertEqual 
+ * Refer to the ServiceNow documentation for more information on metrics:
+ * https://docs.servicenow.com/csh?topicname=c_MetricDefinitionSupport.html&version=latest
+ * 
+ * Some of the functions in this script are:
+ * - createMetricInstance: Creates a metric instance record for a given metric definition and record
+ * - clearMetricsByRelatedRecord: Deletes all metric instances for a given record
+ * - queueMetricUpdate: Used in a business rule to queue the metric.update event. This is used when creating metrics on a table that doesn't extend Task
  */
-function KLF_LdapGroupServiceTest(outputs, steps, params, stepResult, assertEqual) {
-    describe('KLF_LdapGroupServiceTest.getGroupByDn', function() {
-        var expectedGroupName = 'test group';
-        beforeAll(function() {
-            var expectedGroup = new GlideRecord('sys_user_group');
-            expectedGroup.newRecord();
-            expectedGroup.name = expectedGroupName;
-            expectedGroup.source = 'ldap: ' + expectedGroupName;
-            expectedGroup.update();
-        });
+// @ts-ignore
+var global = global || {};
 
-        try {
-            var ldapGroupService = new global.KLF_LdapGroupService({
-                ldapServerName: 'Example LDAP Server'
-            });
-        } catch (e) {
-            stepResult.setOutputMessage(e);
-            stepResult.setFailed();
-            return;
+global.KLF_MetricUtils = function() {};
+
+global.KLF_MetricUtils.prototype = {
+    /**
+     * @param {GlideRecord} glideRecord 
+     * @param {GlideRecord} metricDefinition 
+     * @returns {GlideRecord}
+     */
+    createMetricInstance: function(glideRecord, metricDefinition) {
+        var metricInstance = new GlideRecord('metric_instance');
+        metricInstance.newRecord();
+        metricInstance.table = glideRecord.getRecordClassName();
+        metricInstance.id = glideRecord.sys_id;
+        metricInstance.definition = metricDefinition.sys_id;
+        metricInstance.field = metricDefinition.field;
+        return metricInstance;
+    },
+
+    /**
+     * @param {string} table 
+     * @param {string} sysId 
+     */
+    clearMetricsByRelatedRecord: function(table, sysId) {
+        if (table && sysId) {
+            var metricInstance = new GlideRecord('metric_instance');
+            metricInstance.addQuery('table', table);
+            metricInstance.addQuery('id', sysId);
+            metricInstance.deleteMultiple();
+        }
+    },
+
+    /**
+     * This function should be called from a business rule.
+     * 
+     * Function is copied from "metrics events" business rule on the Task table
+     * This function is used to queue the metric update event. When creating a Metric Definition
+     * that doesn't extend the Task table, the "metrics events" business rule must be copied to the
+     * new table and the queueMetricUpdate function must be called from the "onAfter" business rule
+     * 
+     * This function must be called from global scope. So this function is here in global so it can be
+     * called from the business rule that will be in the application scope.
+     */
+    queueMetricUpdate: function() {
+        var gru = new GlideScriptRecordUtil.get(current);
+        var fieldsChanged = gru.getChangedFieldNames();
+        var gr = getDefinitions(fieldsChanged);
+        fields = '';
+        while (gr.next())
+            fields += gr.field + ',';
+
+        if (fields.length > 0) {
+            fields = '[' + fields.substring(0, fields.length - 1) + ']';
+            gs.eventQueue('metric.update', current, fields, current.sys_mod_count, 'metric_update');
         }
 
-        it('should return group when one exists', function() {
-            var group = ldapGroupService.getGroupByDn(expectedGroupName);
-            expect(group).not.toBeNull();
-            if (group) {
-                expect(group.getValue('name')).toBe(expectedGroupName);
-            }
-        });
-
-        it('should not return a group when no group name is provided', function() {
-            // @ts-ignore
-            var group = ldapGroupService.getGroupByDn();
-            expect(group).toBeNull();
-        });
-
-        it('should not return group when given a bad group name', function() {
-            var group = ldapGroupService.getGroupByDn('INVALID GROUP NAME');
-            expect(group).toBeNull();
-        });
-
-    });
-}
+        function getDefinitions(fields) {
+            var gr = new GlideAggregate('metric_definition');
+            gr.addActiveQuery();
+            var tables = GlideDBObjectManager.getTables(current.getTableName());
+            gr.addQuery('table', tables);
+            gr.addQuery('field', fields);
+            gr.groupBy('field');
+            gr.query();
+            return gr;
+        }
+    }
+};
 //@ts-ignore
 var global = global || {};
 
@@ -2589,6 +2621,11 @@ global.KLF_RecordSync.Manifest.prototype = {
      * @param {string} sysId 
      */
     addRecord: function(tableName, sysId) {
+        if (!tableName || !sysId) {
+            this.logError('Invalid table name or sys_id');
+            return;
+        }
+
         if (!this.manifest[tableName]) {
             this.manifest[tableName] = {};
         }
@@ -2603,9 +2640,8 @@ global.KLF_RecordSync.Manifest.prototype = {
     addRecords: function(tableName, sysIds) {
         var me = this;
         sysIds.forEach(function(sysId) {
-            JSON.stringify("manifest: " + me.manifest);
             me.addRecord(tableName, sysId);
-        }, this);
+        });
     },
 
     /**
@@ -2640,22 +2676,27 @@ global.KLF_RecordSync.Manifest.prototype = {
     /**
      * Returns all the sys_ids for a table in the manifest
      * @param {string} tableName
+     * @returns {string[]}
      */
     getSysIdsForTable: function(tableName) {
-        return Object.keys(this.manifest[tableName]).sort();
+        var entries = this.manifest[tableName];
+        if (entries) {
+            return Object.keys(entries).sort();
+        } else {
+            return [];
+        }
     },
 
     /**
      * Returns a Object representation of the manifest. This is to facilitate JSON serialization
+     * @returns {{[tableName:string]:string[]}}
      */
     toObj: function() {
         var me = this;
-        /** @type {{[tableName:string]:string[]}} */
-        var manifest = {};
-        this.getTables().forEach(function(tableName) {
+        return this.getTables().reduce(function(manifest, tableName) {
             manifest[tableName] = me.getSysIdsForTable(tableName);
-        });
-        return manifest;
+            return manifest;
+        }, /** @type {{[tableName:string]:string[]}} */ ({}));
     },
 
     /**
@@ -2663,6 +2704,14 @@ global.KLF_RecordSync.Manifest.prototype = {
      */
     toJson: function() {
         return JSON.stringify(this.toObj(), null, 4);
+    },
+
+    /**
+     * Returns true if the manifest is empty
+     * @returns {boolean}
+     */
+    isEmpty: function() {
+        return this.getTables().length === 0;
     },
 
     /**
@@ -2701,7 +2750,7 @@ global.KLF_RecordSync.Manifest.createManifestFromObj = function(manifestObject) 
         manifest.addRecords(tableName, manifestObject[tableName]);
     }
     return manifest;
-}
+};
 
 /**
  * Creates a manifest from the JSON representation
@@ -2711,7 +2760,7 @@ global.KLF_RecordSync.Manifest.createManifestFromObj = function(manifestObject) 
 global.KLF_RecordSync.Manifest.createManifestFromJson = function(jsonManifest) {
     var manifestObj = JSON.parse(jsonManifest);
     return global.KLF_RecordSync.Manifest.createManifestFromObj(manifestObj);
-}
+};
 
 
 /**
@@ -2804,6 +2853,16 @@ global.KLF_RecordSync.prototype = {
             // Use the tableName to query a batch of records from the source table
             var source = new GlideRecord(tableName);
             source.orderBy('sys_created_on');
+
+            // If it has an auto number field then order by that field as well
+            // There can be a subtle issue if we order by sys_created_on and while this script is running
+            // records are being rapidly created in the source instance. Those records may have the same
+            // sys_created_on value and the order of those records will be non-deterministic. So if the table
+            // has an auto number field then order by that field as well
+            if (me.tableHasAutoNumberField(tableName)) {
+                source.orderBy('number');
+            }
+
             source.chooseWindow(start, start + chunkSize);
             if (encodedQueryString) {
                 source.addEncodedQuery(encodedQueryString);
@@ -2815,10 +2874,12 @@ global.KLF_RecordSync.prototype = {
                 sourceSysIds.push(source.sys_id.toString());
             }
 
+            me.logInfo('Chunk: ' + start + ' to ' + (start + chunkSize) + ' of ' + totalRecords);
+
             // Query the remote instance using the REST table API for the records that are in the sysIds array
             var request = me.createRestMessage();
             request.setHttpMethod('GET');
-            var endpointPath = '/api/now/table/' + tableName
+            var endpointPath = '/api/now/table/' + tableName;
             var query = [
                 'sysparm_fields=sys_id',
                 'sysparm_query=sys_idIN' + encodeURIComponent(sourceSysIds.join(','))
@@ -3053,16 +3114,17 @@ global.KLF_RecordSync.prototype = {
         // Need to find all the fields that are group references
         var elements = new global.ArrayUtil().convertArray(glideRecord.getElements());
         elements.forEach(function(element) {
-            var elementDescriptor = element.getED()
+            var elementDescriptor = element.getED();
             if (elementDescriptor) {
                 var internalType = elementDescriptor.getInternalType();
+                var table;
                 if (internalType == 'reference') {
-                    var table = elementDescriptor.getReference();
+                    table = elementDescriptor.getReference();
                     if (table == 'sys_user_group') {
                         mapReferenceField(element.getName());
                     }
                 } else if (internalType == 'glide_list') {
-                    var table = elementDescriptor.getReference();
+                    table = elementDescriptor.getReference();
                     if (table == 'sys_user_group') {
                         mapListField(element.getName());
                     }
@@ -3148,33 +3210,19 @@ global.KLF_RecordSync.prototype = {
     },
 
     /**
-     * Merges two KLF_Manifest objects together. It merges the keys and the values of the two objects.
-     * The resulting objects will have the keys of both objects and the values will be the unique values
-     * of both objects based on the key.
-     * @param {KLF_Manifest} manifest1
-     * @param {KLF_Manifest} manifest2
-     * @returns {KLF_Manifest}
-     */
-    mergeManifests: function(manifest1, manifest2) {
-        for (var tableName in manifest2) {
-            if (!manifest1[tableName]) {
-                manifest1[tableName] = {};
-            }
-            for (var sysId in manifest2[tableName]) {
-                manifest1[tableName][sysId] = true;
-            }
-        }
-        return manifest1;
-    },
-
-    /**
      * Returns the XML representation of the Document
      * @param {Document} document 
+     * @param {boolean} [prettyPrint]
      * @returns {string}
      */
-    documentToString: function(document) {
-        // @ts-ignore
-        return global.GlideXMLUtil.toString(document);
+    documentToString: function(document, prettyPrint) {
+        if (prettyPrint) {
+            // @ts-ignore
+            return global.GlideXMLUtil.toIndentedString(document);
+        } else {
+            // @ts-ignore
+            return global.GlideXMLUtil.toString(document);
+        }
     },
 
     /**
@@ -3243,7 +3291,7 @@ global.KLF_RecordSync.prototype = {
                 success: true,
                 payload: payload,
                 missingManifest: null
-            }
+            };
         }
 
     },
@@ -3273,6 +3321,39 @@ global.KLF_RecordSync.prototype = {
         var parsedPayload = JSON.parse(payload);
         var missingManifest = global.KLF_RecordSync.Manifest.createManifestFromObj(parsedPayload.result);
         return missingManifest;
+    },
+
+    /**
+     * Returns true if the table has an auto number field called number
+     * @param {string} tableName 
+     * @returns {boolean}
+     */
+    tableHasAutoNumberField: function(tableName) {
+        var gr = new GlideRecord(tableName);
+        if (!gr.isValid()) {
+            return false;
+        }
+
+        if (!gr.isValidField('number')) {
+            return false;
+        }
+
+        var table = new GlideRecord('sys_db_object');
+        if (!table.get('name', tableName)) {
+            return false;
+        }
+
+        // If the table has a number_ref field then it is an auto number field
+        if (table.number_ref.nil()) {
+            return false;
+        }
+
+        // Just make sure the field is active
+        var numberColumn = new GlideRecord('sys_dictionary');
+        numberColumn.addQuery('name', tableName);
+        numberColumn.addQuery('element', 'number');
+        numberColumn.query();
+        return numberColumn.next() && Boolean(numberColumn.active);
     }
 
 };
@@ -3293,6 +3374,7 @@ global.KLF_RecordSync.prototype = {
  * @property {string} table The name of the table that contains the field
  * @property {string} type The type of the field from sys_dictionary
  * @property {string} columnName The column name of the field
+ * @property {string} sysId sys_dictionary.sys_id
  */
 
 /**
@@ -3420,7 +3502,7 @@ global.KLF_RecordSync_GroupUtils.createMappingFromRemote = function(remoteGroups
         missingGroups: missingGroups,
         mapping: localToRemoteMapping
     };
-}
+};
 
 /**
  * The group sys_ids in notifications are not updated when the notifications are transferred to the remote system. This method
@@ -3430,6 +3512,18 @@ global.KLF_RecordSync_GroupUtils.createMappingFromRemote = function(remoteGroups
  * @returns {KLF_RecordSync_UpdateRemoteNotificationsResponse}
  */
 global.KLF_RecordSync_GroupUtils.updateNotifications = function(groupMapping, notificationSysIds) {
+    if (!Array.isArray(notificationSysIds)) {
+        throw 'notificationSysIds must be an array';
+    }
+
+    if (notificationSysIds.length === 0) {
+        return {
+            success: true,
+            updatedNotifications: [],
+            notUpdatedNotifications: []
+        };
+    }
+
     var mapping = groupMapping.mapping;
 
     // Get notifications that use groups
@@ -3484,7 +3578,7 @@ global.KLF_RecordSync_GroupUtils.updateNotifications = function(groupMapping, no
 
     return response;
 
-}
+};
 
 global.KLF_RecordSync_GroupUtils.prototype = {
     /**
@@ -3504,15 +3598,20 @@ global.KLF_RecordSync_GroupUtils.prototype = {
      * Finds all the fields that reference sys_user_group in a scoped app. This attempts to find
      * all the group fields in the system. The group fields will include both reference fields and
      * list fields that reference sys_user_group
-     * @param {string} scopeSysId sys_scope.sys_id
+     * @param {string} scopeNamespace sys_scope.scope
      * @returns {KLF_RecordSync_GroupField[]}
      */
-    getGroupFieldsInScope: function(scopeSysId) {
+    getGroupFieldsInScope: function(scopeNamespace) {
         var me = this;
         var dataTransferUtils = new global.KLF_DataTransferUtils();
-        var tables = dataTransferUtils.getTablesInScope(scopeSysId);
+        var tables = dataTransferUtils.getTablesInScope(scopeNamespace);
+        var sysDictionarySysIds = /** @type {{[sysId:string]:boolean}} */ ({});
         return tables.reduce(function(allFields, tableName) {
-            return allFields.concat(me.getGroupFieldsInTable(tableName));
+            var fields = me.getGroupFieldsInTable(tableName, Object.keys(sysDictionarySysIds));
+            fields.forEach(function(field) {
+                sysDictionarySysIds[field.sysId] = true;
+            });
+            return allFields.concat(fields);
         }, []);
     },
 
@@ -3521,21 +3620,33 @@ global.KLF_RecordSync_GroupUtils.prototype = {
      * all the group fields in table. The group fields will include both reference fields and
      * list fields that reference sys_user_group
      * @param {string} tableName 
+     * @param {string[]} [excludeFields] A map of sys_dictionary.sys_id to exclude from the results
      * @returns {KLF_RecordSync_GroupField[]}
      */
-    getGroupFieldsInTable: function(tableName) {
-        var arrayUtil = new global.ArrayUtil()
+    getGroupFieldsInTable: function(tableName, excludeFields) {
+        if (!tableName) {
+            throw 'Table name is required';
+        }
+        var gr = new GlideRecord(tableName);
+        if (!gr.isValid()) {
+            throw 'Table does not exist: ' + tableName;
+        }
+        var arrayUtil = new global.ArrayUtil();
         // @ts-ignore
         var tableUtils = new global.TableUtils(tableName);
-        var tables = arrayUtil.convertArray(tableUtils.getHierarchy());
+        var tables = arrayUtil.convertArray(tableUtils.getTables());
         return tables.reduce(function(allFields, tableName) {
             var fieldGr = new GlideRecord('sys_dictionary');
             fieldGr.addQuery('name', tableName);
             fieldGr.addQuery('reference', 'sys_user_group');
+            if (excludeFields) {
+                fieldGr.addQuery('sys_id', 'NOT IN', excludeFields);
+            }
             fieldGr.query();
             var fields = [];
             while (fieldGr.next()) {
                 fields.push({
+                    sysId: fieldGr.getUniqueValue(),
                     table: fieldGr.name.toString(),
                     type: fieldGr.internal_type.toString(),
                     columnName: fieldGr.element.toString(),
@@ -3682,7 +3793,7 @@ global.KLF_RecordSync_GroupUtils.prototype = {
 
         // Make a  request to sys_user_group
         var request = this.createRestMessage();
-        request.setRequestHeader('Content-Type', 'application/json')
+        request.setRequestHeader('Content-Type', 'application/json');
         request.setHttpMethod('POST');
         var endpoint = request.getEndpoint() + gs.getProperty('KLF_RecordSync_GroupUtils.endpoint.mapping.path');
         request.setEndpoint(endpoint);
@@ -3802,6 +3913,9 @@ global.KLF_RecordSync_GroupUtils.prototype = {
      * @returns {string[]} sys_user_group.sys_id[]
      */
     getGroupsUsedInNotifications: function(notificationSysIds) {
+        if (!Array.isArray(notificationSysIds)) {
+            throw 'notificationSysIds must be an array';
+        }
         var notification = new GlideRecord('sysevent_email_action');
         notification.addQuery('sys_id', 'IN', notificationSysIds);
         notification.addNotNullQuery('recipient_groups');
@@ -3845,6 +3959,508 @@ global.KLF_RecordSync_GroupUtils.prototype = {
 
         return JSON.parse(response.getBody());
     }
+};
+/**
+ * When transferring an application between ServiceNow instances the various users and
+ * groups on the target system will not have the same roles as the source system. This
+ * script include helps to manage the transition of roles between the two systems.
+ * 
+ * The script include provides methods to:
+ * - getRolesInScope: Returns a list of roles in the provided scope
+ * - diffLocalAndRemoteRoles: Compares the roles assigned to users and groups on the source and target instances
+ * - getRemoteRoleAssignedTo: Returns the roles on the source instance that are not assigned to the user or group on the target instance
+ * - getAssignedToRole: Generates a data object that contains two keys: users and groups
+ * - getRoleAssignedTo: Generates a data object that contains role names as keys
+ * - getUsersForRole: Returns a list of usernames that have the specified role
+ * - getGroupsForRole: Returns a list of group names that have the specified role
+ * @example
+ * // This finds the roles in the x_53417_demo scope
+ * // Check the differences between the roles on the source and target instances
+ * // Then syncs the roles on the target instance so they are the same as the source instance
+ * // for the roles that are missing
+ * var connectionConfig = {
+ *     username: 'kenneth.frencher',
+ *     password: gs.getProperty('KLF_RecordSync.user.password'), // Retrieve password from encoded password property
+ *     instanceUrl: 'https://abspscpov2.service-now.com',
+ *     chunkSize: 20
+ * };
+ * var roleUtils = new global.KLF_RecordSync_RoleUtils(connectionConfig);
+ * var missingRoles = roleUtils.diffLocalAndRemoteRoles(roleNames);
+ * roleUtils.syncRoles(missingRoles);
+ */
+
+var global = global || {};
+
+/**
+ * @param {KLF_RecordSyncConnectionConfig} connectionConfig 
+ */
+global.KLF_RecordSync_RoleUtils = function(connectionConfig) {
+    this.connectionConfig = connectionConfig;
+};
+
+/**
+ * @typedef {{
+ * roleAssignedToData?: RoleAssignedToData,
+ * success: boolean
+ * error?: string
+ * }} RoleAssignedToResponse
+ */
+/**
+ * @param {string[]} roleNames 
+ * @returns 
+ */
+global.KLF_RecordSync_RoleUtils.getRemoteRoleAssignedTo = function(roleNames) {
+    return {
+        // @ts-ignore
+        roleAssignedToData: new global.KLF_RecordSync_RoleUtils().getRoleAssignedTo(roleNames),
+        success: true
+    };
+};
+
+/**
+ * @typedef {{
+ * success: boolean
+ * errors: string[]
+ * }} AddRolesResponse
+ */
+/**
+ * @param {RoleAssignedToData} roleData 
+ * @returns {AddRolesResponse}
+ */
+global.KLF_RecordSync_RoleUtils.addRoles = function(roleData) {
+    // @ts-ignore
+    var errors = new global.KLF_RecordSync_RoleUtils().addRoles(roleData);
+    return {
+        success: true,
+        errors: errors
+    };
+};
+
+global.KLF_RecordSync_RoleUtils.prototype = {
+    /**
+     * @param {string} message 
+     */
+    logInfo: function(message) {
+        gs.log(message, 'KLF_RecordSync_RoleUtils');
+    },
+    /**
+     * @param {string} message 
+     */
+    logError: function(message) {
+        gs.logError(message, 'KLF_RecordSync_RoleUtils');
+    },
+    /**
+     * Returns a list of roles in the provided scope
+     * @param {string} scope
+     * @returns {string[]}
+     */
+    getRolesInScope: function(scope) {
+        if (!scope) {
+            throw new Error('Scope is required');
+        }
+        var roles = [];
+        var role = new GlideRecord('sys_user_role');
+        role.addQuery('sys_scope.scope', scope);
+        role.query();
+        while (role.next()) {
+            roles.push(role.name.toString());
+        }
+        return roles;
+    },
+
+    /**
+     * Compares the two role objects and returns the roles that are present in
+     * role1 but not in role2. The role names in the two objects must match.
+     * @param {RoleAssignedToData} role1
+     * @param {RoleAssignedToData} role2
+     * @returns {RoleAssignedToData}
+     */
+    diffRoles: function(role1, role2) {
+        var roles1 = Object.keys(role1);
+        var roles2 = Object.keys(role2);
+
+        var missingRoles = new global.ArrayUtil().diff(roles1, roles2);
+        if (missingRoles.length > 0) {
+            throw new Error('Role names do not match: ' + missingRoles.join('\n'));
+        }
+
+        return roles1.reduce(function(diff, roleName) {
+            var users1 = role1[roleName].users;
+            var users2 = role2[roleName].users;
+            var missingUsers = new global.ArrayUtil().diff(users1, users2);
+
+            var groups1 = role1[roleName].groups;
+            var groups2 = role2[roleName].groups;
+            var missingGroups = new global.ArrayUtil().diff(groups1, groups2);
+
+            diff[roleName] = {
+                users: missingUsers,
+                groups: missingGroups
+            };
+            return diff;
+        }, /** @type {RoleAssignedToData} */ ({}));
+    },
+
+    /**
+     * Synchronizes the passed roles with the target instance
+     * @param {RoleAssignedToData} roleData
+     */
+    syncRoles: function(roleData) {
+        // Make a  request to sys_user_group
+        var request = this.createRestMessage();
+        request.setRequestHeader('Content-Type', 'application/json');
+        request.setHttpMethod('POST');
+        var endpoint = request.getEndpoint() + gs.getProperty('KLF_RecordSync_RoleUtils.endpoint.roles.path');
+        request.setEndpoint(endpoint);
+        this.logInfo('Syncing remote roles:\n\n' + JSON.stringify(roleData, null, 4));
+        request.setRequestBody(JSON.stringify(roleData));
+
+        var response = request.execute();
+        if (response.getStatusCode() != 200) {
+            this.logError('Failed to sync roles using role data: ' + JSON.stringify(roleData));
+            this.logError('Received status code: ' + response.getStatusCode());
+            this.logError('Received body: ' + response.getBody());
+            return {
+                success: false,
+                error: response.getBody()
+            };
+        }
+
+        var responseBody = JSON.parse(response.getBody());
+        return {
+            success: true,
+            errors: responseBody.result.errors
+        };
+    },
+
+    /**
+     * Adds the specified roles to the users / groups
+     * @param {RoleAssignedToData} roleData
+     * @returns {string[]} Array of any errors that occurred
+     */
+    addRoles: function(roleData) {
+        var me = this;
+        var roleNames = Object.keys(roleData);
+        var errors = /** @type {string[]} */ ([]);
+        roleNames.forEach(function(roleName) {
+            var assignedTo = roleData[roleName];
+            assignedTo.users.forEach(function(username) {
+                try {
+                    me._addUserRole(username, roleName);
+                } catch (e) {
+                    if (e instanceof Error && e.name == 'UserNotFoundError') {
+                        errors.push(e.message);
+                    }
+                    if (e instanceof Error && e.name == 'RoleNotFoundError') {
+                        errors.push(e.message);
+                    }
+                }
+            });
+            assignedTo.groups.forEach(function(groupName) {
+                try {
+                    me._addGroupRole(groupName, roleName);
+                } catch (e) {
+                    if (e instanceof Error && e.name == 'GroupNotFoundError') {
+                        errors.push(e.message);
+                    }
+                    if (e instanceof Error && e.name == 'RoleNotFoundError') {
+                        errors.push(e.message);
+                    }
+                }
+            });
+        });
+
+        return errors;
+    },
+
+    /**
+     * Compares the roles assigned to users and groups on the source and target instances.
+     * Returns the roles on the source instance that are not assigned to the user or group
+     * on the target instance.
+     * 
+     * This allows for the roles to be added to the user or group on the target instance.
+     * @param {string[]} roleNames
+     * @returns {RoleAssignedToData}
+     */
+    diffLocalAndRemoteRoles: function(roleNames) {
+        var localRoles = this.getRoleAssignedTo(roleNames);
+        var response = this.getRemoteRoleAssignedTo(roleNames);
+        if (!response.success) {
+            throw new Error('Failed to retrieve remote roles: ' + response.error);
+        }
+
+        var remoteRoles = /** @type {RoleAssignedToData} */ (response.roleAssignedToData);
+        return this.diffRoles(localRoles, remoteRoles);
+    },
+
+    /**
+     * Returns a sn_ws.RESTMessageV2 object that is configured to make a request to the target instance
+     * @returns {sn_ws.RESTMessageV2}
+     */
+    createRestMessage: function() {
+        var request = new sn_ws.RESTMessageV2();
+        request.setRequestHeader("Accept", "application/json");
+        var authHeader = 'Basic ' + GlideStringUtil.base64Encode(this.connectionConfig.username + ':' + this.connectionConfig.password);
+        request.setRequestHeader('Authorization', authHeader);
+        // Do not use setBasicAuth. This does not work with mutual auth for some reason
+        // request.setBasicAuth(this.connectionConfig.username, this.connectionConfig.password);
+        request.setEndpoint(this.connectionConfig.instanceUrl);
+        return request;
+    },
+
+    /**
+     * @param {string[]} roleNames
+     * @returns {RoleAssignedToResponse}
+     */
+    getRemoteRoleAssignedTo: function(roleNames) {
+        // Make a  request to sys_user_group
+        var request = this.createRestMessage();
+        request.setRequestHeader('Content-Type', 'application/json');
+        request.setHttpMethod('GET');
+        var endpoint = request.getEndpoint() +
+            gs.getProperty('KLF_RecordSync_RoleUtils.endpoint.roles.path') +
+            '?roleNames=' + roleNames.join(',');
+        request.setEndpoint(endpoint);
+        this.logInfo('Retrieving remote roles using endpoint: ' + endpoint);
+        this.logInfo('Retrieving remote roles:\n\n' + JSON.stringify(roleNames, null, 4));
+
+        var response = request.execute();
+        if (response.getStatusCode() != 200) {
+            this.logError('Failed to retrieve roles using role names: ' + roleNames.join(', '));
+            this.logError('Received status code: ' + response.getStatusCode());
+            this.logError('Received body: ' + response.getBody());
+            return {
+                success: false,
+                error: response.getBody()
+            };
+        }
+
+        this.logInfo('Response from getRemoteRoleAssignedTo: ' + response.getBody());
+        var responseBody = JSON.parse(response.getBody());
+        return {
+            success: true,
+            roleAssignedToData: responseBody.result.roleAssignedToData
+        };
+    },
+
+    /**
+     * @typedef {{
+     * users: {
+     *   [username:string]: string[] // role names
+     * },
+     * groups: {
+     *   [groupName:string]: string[] // role names
+     * }
+     * }} AssignedToRoleData
+     */
+    /**
+     * Generates a data object that contains two keys: users and groups. The users key
+     * contains a map of usernames to role names. The groups key contains a map of group
+     * names to role names.
+     * 
+     * The roles in each map are the uninherited roles associated with the user or group on the source
+     * instance
+     * 
+     * @param {string[]} roleNames
+     * @returns {AssignedToRoleData}
+     * @example
+     * var roleUtils = new global.KLF_RecordSync_RoleUtils();
+     * roleUtils.getRoleAssignedTo(['x_53417_demo.user']);
+     * // returns:
+     * {
+     *   "users": {
+     *       "avery.parbol": [
+     *           "x_53417_demo.user"
+     *       ],
+     *       "alyssa.biasotti": [
+     *           "x_53417_demo.user"
+     *       ],
+     *   },
+     *   "groups": {
+     *       "ATF_TestGroup_ServiceDesk": [
+     *           "x_53417_demo.user"
+     *       ],
+     *       "Network CAB Managers": [
+     *           "x_53417_demo.user"
+     *       ],
+     *   }
+     * }
+     */
+    getAssignedToRole: function(roleNames) {
+        var me = this;
+        return roleNames.reduce(function(roleData, roleName) {
+            var users = me.getUsersForRole(roleName);
+            var groups = me.getGroupsForRole(roleName);
+
+            roleData.users = users.reduce(function(userMap, userName) {
+                userMap[userName] = userMap[userName] || [];
+                userMap[userName].push(roleName);
+                return userMap;
+            }, roleData.users || {});
+
+            roleData.groups = groups.reduce(function(groupMap, groupName) {
+                groupMap[groupName] = groupMap[groupName] || [];
+                groupMap[groupName].push(roleName);
+                return groupMap;
+            }, roleData.groups || {});
+
+            return roleData;
+        }, /** @type {AssignedToRoleData} */ ({}));
+    },
+
+    /**
+     * @typedef {{
+     * [roleName:string]: {
+     *  users: string[],
+     *  groups: string[]
+     * }
+     * }} RoleAssignedToData
+     */
+    /**
+     * Generates a data object that contains role names as keys. Each key contains
+     * an object with two keys: users and groups. The users key contains a list of
+     * usernames that have the role on the source instance. The groups key contains
+     * a list of group names that have the role on the source instance.
+     * 
+     * @param {string[]} roleNames
+     * @returns {RoleAssignedToData}
+     * @example
+     * var roleUtils = new global.KLF_RecordSync_RoleUtils();
+     * roleUtils.getRoleAssignedTo(['x_53417_demo.user']);
+     * // returns:
+     * {
+     *   "x_53417_demo.user": {
+     *       "users": [
+     *           "avery.parbol",
+     *           "alyssa.biasotti"
+     *       ],
+     *       "groups": [
+     *           "ATF_TestGroup_ServiceDesk",
+     *           "Network CAB Managers"
+     *       ]
+     *   }
+     * }
+     */
+    getRoleAssignedTo: function(roleNames) {
+        var me = this;
+        return roleNames.reduce(function(roleData, roleName) {
+            roleData[roleName] = {
+                users: me.getUsersForRole(roleName),
+                groups: me.getGroupsForRole(roleName)
+            };
+            return roleData;
+        }, /** @type {RoleAssignedToData} */ ({}));
+    },
+
+
+    /**
+     * Returns a list of usernames that have the specified role
+     * @param {string} roleName 
+     * @returns {string[]}
+     */
+    getUsersForRole: function(roleName) {
+        if (!roleName) {
+            throw new Error('Role name is required');
+        }
+        var userNames = [];
+        var userRole = new GlideRecord('sys_user_has_role');
+        userRole.addQuery('role.name', roleName);
+        userRole.addQuery('inherited', false);
+        userRole.query();
+        while (userRole.next()) {
+            userNames.push(userRole.user.user_name.toString());
+        }
+        return userNames;
+    },
+
+    /**
+     * Returns a list of group names that have the specified role
+     * @param {string} roleName 
+     * @returns {string[]}
+     */
+    getGroupsForRole: function(roleName) {
+        if (!roleName) {
+            throw new Error('Role name is required');
+        }
+        var groupNames = [];
+        var groupRole = new GlideRecord('sys_group_has_role');
+        groupRole.addQuery('role.name', roleName);
+        groupRole.query();
+        while (groupRole.next()) {
+            groupNames.push(groupRole.group.name.toString());
+        }
+        return groupNames;
+    },
+
+    /**
+     * Adds the specified role to the group. If the role is already assigned to the group
+     * then no action is taken.
+     * @param {string} groupName 
+     * @param {string} roleName 
+     * @throws {Error} If the user or role does not exist
+     */
+    _addGroupRole: function(groupName, roleName) {
+        var groupRole = new GlideRecord('sys_group_has_role');
+        var error = null;
+        // Make sure user and role exist
+        var group = new GlideRecord('sys_user_group');
+        if (!group.get('name', groupName)) {
+            error = new Error('Group not found: ' + groupName);
+            error.name = 'GroupNotFoundError';
+            throw error;
+        }
+        var role = new GlideRecord('sys_user_role');
+        if (!role.get('name', roleName)) {
+            error = new Error('Role not found: ' + roleName);
+            error.name = 'RoleNotFoundError';
+            throw error;
+        }
+        groupRole.addQuery('group.name', groupName);
+        groupRole.addQuery('role.name', roleName);
+        groupRole.query();
+        if (!groupRole.next()) {
+            groupRole.newRecord();
+            groupRole.group = group.getUniqueValue();
+            groupRole.role = role.getUniqueValue();
+            groupRole.update();
+        }
+    },
+
+
+    /**
+     * Adds the specified role to the user. If the role is already assigned to the user
+     * then no action is taken.
+     * @param {string} username 
+     * @param {string} roleName 
+     * @throws {Error} If the user or role does not exist
+     */
+    _addUserRole: function(username, roleName) {
+        var userRole = new GlideRecord('sys_user_has_role');
+        var error = null;
+        // Make sure user and role exist
+        var user = new GlideRecord('sys_user');
+        if (!user.get('user_name', username)) {
+            error = new Error('User not found: ' + username);
+            error.name = 'UserNotFoundError';
+            throw error;
+        }
+        var role = new GlideRecord('sys_user_role');
+        if (!role.get('name', roleName)) {
+            error = new Error('Role not found: ' + roleName);
+            error.name = 'RoleNotFoundError';
+            throw error;
+        }
+        userRole.addQuery('user.user_name', username);
+        userRole.addQuery('role.name', roleName);
+        userRole.query();
+        if (!userRole.next()) {
+            userRole.newRecord();
+            userRole.user = user.getUniqueValue();
+            userRole.role = role.getUniqueValue();
+            userRole.update();
+        }
+    }
+
 };
 /**
  * When transferring data between ServiceNow instances users referenced in the source data set may not exist 
@@ -3969,7 +4585,7 @@ global.KLF_RecordSync_UserUtils.createMappingFromRemote = function(remoteUsers) 
         missingUsers: missingUsers,
         mapping: localToRemoteMapping
     };
-}
+};
 
 global.KLF_RecordSync_UserUtils.prototype = {
     /**
@@ -4119,10 +4735,15 @@ global.KLF_RecordSync_UserUtils.prototype = {
      * @returns {KLF_RecordSync_UserField[]}
      */
     getUserFieldsInTable: function(tableName) {
-        var arrayUtil = new global.ArrayUtil()
+        var arrayUtil = new global.ArrayUtil();
+
         // @ts-ignore
         var tableUtils = new global.TableUtils(tableName);
-        var tables = arrayUtil.convertArray(tableUtils.getHierarchy());
+        if (!tableUtils.tableExists()) {
+            throw Error('Table does not exist: ' + tableName);
+        }
+
+        var tables = arrayUtil.convertArray(tableUtils.getTables());
         return tables.reduce(function(allFields, tableName) {
             var fieldGr = new GlideRecord('sys_dictionary');
             fieldGr.addQuery('name', tableName);
@@ -4277,7 +4898,7 @@ global.KLF_RecordSync_UserUtils.prototype = {
 
         // Make a  request to sys_user_user
         var request = this.createRestMessage();
-        request.setRequestHeader('Content-Type', 'application/json')
+        request.setRequestHeader('Content-Type', 'application/json');
         request.setHttpMethod('POST');
         var endpoint = request.getEndpoint() + gs.getProperty('KLF_RecordSync_UserUtils.endpoint.mapping.path');
         request.setEndpoint(endpoint);
@@ -4377,6 +4998,73 @@ global.KLF_RecordSync_UserUtils.prototype = {
     }
 };
 /**
+ * This script contains general functions that help with role management in ServiceNow.
+ * - userHasRole: Returns true if the user has the specified role.
+ * - groupHasRole: Returns true if the group has the role.
+ */
+
+//@ts-ignore
+var global = global || {};
+
+global.KLF_RoleUtils = function() {};
+
+global.KLF_RoleUtils.prototype = {
+    /**
+     * @param {string} message 
+     */
+    logError: function(message) {
+        gs.logError(message, "KLF_RoleUtils");
+    },
+
+    /**
+     * Returns true if the user has the specified role.
+     * @param {string} username
+     * @param {string} roleName
+     * @returns {boolean}
+     */
+    userHasRole: function(username, roleName) {
+        if (!username) {
+            this.logError("KLF_RoleUtils.userHasRole: username is required");
+            return false;
+        }
+
+        if (!roleName) {
+            this.logError("KLF_RoleUtils.userHasRole: roleName is required");
+            return false;
+        }
+
+        var userRole = new GlideRecord("sys_user_has_role");
+        userRole.addQuery("user.user_name", username);
+        userRole.addQuery("role.name", roleName);
+        userRole.query();
+        return userRole.hasNext();
+    },
+
+    /**
+     * Returns true if the group has the role
+     * @param {string} groupName
+     * @param {string} roleName
+     * @returns {boolean}
+     */
+    groupHasRole: function(groupName, roleName) {
+        if (!groupName) {
+            this.logError("KLF_RoleUtils.userHasRole: groupName is required");
+            return false;
+        }
+
+        if (!roleName) {
+            this.logError("KLF_RoleUtils.userHasRole: roleName is required");
+            return false;
+        }
+
+        var groupRole = new GlideRecord("sys_group_has_role");
+        groupRole.addQuery("group.name", groupName);
+        groupRole.addQuery("role.name", roleName);
+        groupRole.query();
+        return groupRole.hasNext();
+    },
+};
+/**
  * This script implements some enhancements to the Service Portal.
  * 
  * - applyGlideRecordTemplate - Applies a sys_template to a ServicePortal form to easily populate fields
@@ -4448,15 +5136,15 @@ KLF_SPUtils.prototype = {
      * NullPointerException in Rome, so I replaced it with an equivalent call. This is used
      * in the snb-ticket-conversation widget
      * @param {string} tableName
-     * @param {string} sysld
+     * @param {string} sysId
      * @returns {Object}
      */
-    getStream: function(tableName, sysld) {
+    getStream: function(tableName, sysId) {
         var gr = new GlideRecord(tableName);
-        if (gr.get(sysld)) {
+        if (gr.get(sysId)) {
             return {
                 "display_ value": gr.getDisplayValue(),
-                "sys_id": sysld,
+                "sys_id": sysId,
                 "number": gr.getValue('number'),
                 "entries": [],
                 "user sys_id": gs.getUserID(),
@@ -4506,12 +5194,12 @@ KLF_SPUtils.prototype = {
     /**
      *
      * @param {string} tableName Name of table to retrieve history
-     * @param {string} sysld sys_id of record to retrieve history
+     * @param {string} sysId sys_id of record to retrieve history
      * @returns {ChangeRecord[]}
      */
-    getHistory: function(tableName, sysld) {
+    getHistory: function(tableName, sysId) {
         //@ts-ignore
-        var walker = new sn_hw.HistoryWalker(tableName, sysld);
+        var walker = new sn_hw.HistoryWalker(tableName, sysId);
         walker.walkBackward();
         var current = walker.getWalkedRecordCopy();
         /** @type {GlideRecord} */
@@ -4619,7 +5307,7 @@ KLF_SPUtils.prototype = {
         }
         var actionGr = new GlideRecord('sys_ui_action');
         actionGr.addQuery('client', true);
-        actionGr.addQuery(' active', true);
+        actionGr.addQuery('active', true);
         //filter for only client side UI actions with an UI Action Visibility of Service Portal
         actionGr.addJoinQuery('sys_ui_action_view', 'sys_id', 'sys_ui_action')
             .addCondition('sys_ui_ view', uiView.getUniqueValue());
@@ -4670,16 +5358,16 @@ KLF_SPUtils.prototype = {
      * @param {string} viewName
      * @returns {SPAction[]}
      */
-    filterForSPActionslnView: function(spActions, viewName) {
+    filterForSPActionsInView: function(spActions, viewName) {
         var view = new GlideRecord('sys_ui_view');
-        var viewSysld = (viewName && view.get('name', viewName)) ? view.getUniqueValue() : '';
+        var viewSysId = (viewName && view.get('name', viewName)) ? view.getUniqueValue() : '';
         return spActions.filter(function(spAction) {
             // Look for include rule first
             // If the sys_ui_action has the view on the list than include it
             var includeViewRule = new GlideRecord('sys_ui_action_view');
             includeViewRule.addQuery('sys_ui_action', spAction.sys_id);
             includeViewRule.addQuery('visibility', 'Include');
-            includeViewRule.addQuery('sys_ui_view', viewSysld);
+            includeViewRule.addQuery('sys_ui_view', viewSysId);
             includeViewRule.query();
             if (includeViewRule.getRowCount() > 0) {
                 return true;
@@ -4689,7 +5377,7 @@ KLF_SPUtils.prototype = {
             var excludeViewRule = new GlideRecord('sys_ui_action_view');
             excludeViewRule.addQuery('sys_ui_action', spAction.sys_id);
             excludeViewRule.addQuery('visibility', 'Exclude');
-            excludeViewRule.addQuery('sys_ui_view', viewSysld);
+            excludeViewRule.addQuery('sys_ui_view', viewSysId);
             excludeViewRule.query();
             if (excludeViewRule.getRowCount() > 0) {
                 return false;
@@ -4698,11 +5386,11 @@ KLF_SPUtils.prototype = {
             // an include list. If there was an include list then we know this view
             // isn't on it so exclude it. Otherwise either there isn't a list or
             // this view isn't on the exclude list so include it
-            var haslncludeViewRule = new GlideRecord('sys_ui_action_view');
-            haslncludeViewRule.addQuery('sys_ui_action', spAction.sys_id);
-            haslncludeViewRule.addQuery('visibility', 'Include');
-            haslncludeViewRule.query();
-            return haslncludeViewRule.getRowCount() === 0; // Including if we don't have any include view rules
+            var hasIncludeViewRule = new GlideRecord('sys_ui_action_view');
+            hasIncludeViewRule.addQuery('sys_ui_action', spAction.sys_id);
+            hasIncludeViewRule.addQuery('visibility', 'Include');
+            hasIncludeViewRule.query();
+            return hasIncludeViewRule.getRowCount() === 0; // Including if we don't have any include view rules
         });
     },
     /**
@@ -4714,12 +5402,12 @@ KLF_SPUtils.prototype = {
      * in combination with a UI action. The UI action sys_id is used as a key in the user
      * session to store a redirect URL that is picked up by the client after the UI action
      * executes
-     * @param {string} actionSysld sys_id of a UI Action
+     * @param {string} actionSysId sys_id of a UI Action
      * @param {getUrl} getUrl function used to generate URL
      */
-    setRedirectURL: function(actionSysld, getUrl) {
+    setRedirectURL: function(actionSysId, getUrl) {
         var session = gs.getSession();
-        session.putClientData(actionSysld, JSON.stringify({
+        session.putClientData(actionSysId, JSON.stringify({
             redirectUrl: getUrl()
         }));
     },
@@ -4730,6 +5418,37 @@ KLF_SPUtils.prototype = {
 };
 
 global.KLF_SPUtils = KLF_SPUtils;
+/**
+ * Maybe create a UI Action that has a mapping of old table names to new table names.
+ * Then you can click the UI Action and it would clone the script into the target scope as
+ * well as modify the script to use the new table names.
+ */
+
+/**
+ * Object used to generate a table in a target scope based on a global table.
+ * This is to make it faster to scope a global application.
+ * 
+ * The column names of the resulting scoped table will be the same as the global table
+ * including any columns with a u_ prefix.
+ * 
+ * The following tables are included in the process:
+ * - sys_db_object
+ * - sys_dictionary
+ * - sys_documentation
+ * - sys_embedded_help_role
+ * - sys_security_acl
+ * - sys_security_acl_role
+ * - sys_user_role
+ * - sys_wizard_answer
+ * - ua_table_licensing_config
+ */
+var global = global || {};
+
+global.KLF_TableScoper = function(targetScope) {
+    this.targetScope = targetScope;
+};
+
+global.KLF_TableScoper.prototype = {};
 /**
  * This script include provides utility functions for unit testing.
  * 
@@ -4748,246 +5467,402 @@ global.KLF_SPUtils = KLF_SPUtils;
 var global = global || {};
 
 /**
- * General utility functions for to help with testing using ATF
+ * @typedef {{sysId:string,tableName:string}} KLF_Document
  */
-global.KLF_TestUtils = (function() {
-    var glideRecordUtils = new global.KLF_GlideRecordUtils();
-
-    return {
-
-        /**
-         * Deletes records from the given tables that the specified
-         * user has created. Tables can be specified as a string or an array of strings
-         * @param {string} createdBySysId sys_user.sys_id
-         * @param {string|string[]} tableNames The names of the tables to delete records from
-         */
-        deleteRecordsCreatedBy: function(createdBySysId, tableNames) {
-            if (typeof tableNames === 'string') {
-                tableNames = [tableNames];
-            }
-
-            // first i need to transform the createdBySysId sys_user.sys_id
-            //into a sys_user.user_name
-            var createdBy = new GlideRecord('sys_user');
-            if (!createdBy.get(createdBySysId)) {
-                throw new Error('Could not find user with sys_id: ' + createdBySysId);
-            }
-            var createdByUserName = createdBy.getValue('user_name');
-
-            tableNames.forEach(function(tableName) {
-                var gr = new GlideRecord(tableName);
-                gr.addQuery('sys_created_by', createdByUserName);
-                gr.deleteMultiple();
-            });
-        },
-
-        /**
-         * Deletes records from the given tables that the common user
-         * has created. Tables can be specified as a string or an array of strings
-         * @param {string|string[]} tableNames The names of the tables to delete records from
-         */
-        deleteRecordsCreatedByCommonUser: function(tableNames) {
-            var commonUser = this.getCommonUser();
-            if (commonUser === null) {
-                throw new Error('Could not find common user');
-            }
-            this.deleteRecordsCreatedBy(commonUser.getUniqueValue(), tableNames);
-        },
-
-        /**
-         * Executes the given function as the common user and then reverts back to the original user
-         * @param {function} func The function to execute as the given user
-         */
-        runAsCommonUser: function(func) {
-            this.runAsUser(this.createCommonUser().getUniqueValue(), func);
-        },
-
-        /**
-         * Executes the given function as the given user and then reverts back to the original user
-         * @param {string} userSysId The sys_id of the user to impersonate
-         * @param {function} func The function to execute as the given user
-         */
-        runAsUser: function(userSysId, func) {
-            var previousUserSysId = this.impersonateUser(userSysId);
-            try {
-                func();
-            } catch ( /** @type {*} */ e) {
-                gs.error(e);
-            }
-            this.impersonateUser(previousUserSysId);
-        },
-
-        /**
-         * Returns common user sys_user record or null if it does not exist
-         * @returns {?GlideRecord} The sys_user record of the common user or null if it does not exist
-         */
-        getCommonUser: function() {
-            var user = new GlideRecord('sys_user');
-            if (user.get('user_name', 'common')) {
-                return user;
-            } else {
-                return null;
-            }
-        },
-
-        /**
-         * Creates a user with no roles or groups to simulate a common user
-         * @returns {GlideRecord} The newly created sys_user record
-         */
-        createCommonUser: function() {
-            var user = this.createUser('common');
-            return user;
-        },
-
-        /**
-         * Retrieves a user that has admin access
-         * @returns {GlideRecord} Some user that has admin access
-         */
-        getAdminUser: function() {
-            var user = new GlideRecord('sys_user');
-            if (user.get('user_name', 'admin')) {
-                return user;
-            } else {
-                throw new Error('Could not find admin user');
-            }
-        },
-
-        /**
-         * Impersonates the admin user and returns the GlideRecord of the admin user
-         * Returns the sys_id of the current user before impersonation
-         * @returns {[GlideRecord, string]} The sys_user record for admin user and the
-         * sys_id of the current user before impersonation
-         */
-        impersonateAdminUser: function() {
-            var adminUser = this.getAdminUser();
-            var currentUser = this.impersonateUser(adminUser.getUniqueValue());
-            return [adminUser, currentUser];
-        },
-
-        /**
-         * Returns the common user sys_user record or creates it if it does not exist
-         * @returns {GlideRecord} The sys_user record of the common user
-         */
-        getOrCreateCommonUser: function() {
-            var user = this.getCommonUser();
-            if (user) {
-                return user;
-            } else {
-                return this.createCommonUser();
-            }
-        },
-
-        /**
-         * Impersonates the admin user
-         * Returns the GlideRecord of the common user that was impersonated
-         * Returns the sys_id of the current user before impersonation
-         * @returns {[GlideRecord, string]} The sys_user record for common user and the
-         * sys_id of the current user before impersonation
-         */
-        impersonateCommonUser: function() {
-            var commonUser = this.getOrCreateCommonUser();
-            var currentUser = this.impersonateUser(commonUser.getUniqueValue());
-            return [commonUser, currentUser];
-        },
-
-        /**
-         * Impersonates the user with the given sys_id
-         * @param {string} userSysId The sys_id of the user to impersonate
-         * @returns {string} The sys_id of the current user before impersonation
-         */
-        impersonateUser: function(userSysId) {
-            var impersonator = new GlideImpersonate();
-            return impersonator.impersonate(userSysId);
-        },
 
 
-        /**
-         * Creates a new sys_user_group record
-         * @param {string} groupName - The name of the group to create
-         * @returns {GlideRecord} - The newly created sys_user_group record
-         */
-        createGroup: function(groupName) {
-            return glideRecordUtils.insertRecord('sys_user_group', {
-                name: groupName
-            });
-        },
-
-        /**
-         * Creates a new sys_user record
-         * @param {string} userName - The name of the user to create
-         */
-        createUser: function(userName) {
-            return glideRecordUtils.insertRecord('sys_user', {
-                user_name: userName,
-                first_name: userName + 'first',
-                last_name: userName + 'last',
-                email: userName + '@example.com'
-            });
-        },
-
-        /**
-         * Adds a user to a group
-         * @param {GlideRecord} user - The user to add to the group
-         * @param {GlideRecord} group - The group to add the user to
-         */
-        addUserToGroup: function(user, group) {
-            glideRecordUtils.insertRecord('sys_user_grmember', {
-                user: user.getUniqueValue(),
-                group: group.getUniqueValue()
-            });
-        }
-    };
-})();
 /**
- * @param {*} outputs 
- * @param {*} steps 
- * @param {*} params 
- * @param {*} stepResult 
- * @param {*} assertEqual 
+ * @typedef {{recordTracker?: global.KLF_TestUtils.RecordTracker,commonGroupName?:string,commonUsername?:string,adminUsername?:string}} KLF_TestUtilsConfig
  */
-function KLF_TestUtilsTest(outputs, steps, params, stepResult, assertEqual) {
-    var testUtils = global.KLF_TestUtils;
 
-    describe('KLF_TestUtilTest.impersonateUser', function() {
-        it('should impersonate the user with the given sys_id', function() {
-            var user = testUtils.createUser('testUser');
-            testUtils.impersonateUser(user.sys_id);
-            expect(user.getValue('sys_id')).toBe(gs.getUserID());
-        });
-    });
+/**
+ * General utility functions for to help with testing using ATF
+ * @class global.KLF_TestUtils
+ * contains utility functions
+ * @param {KLF_TestUtilsConfig} [config]
+ */
+global.KLF_TestUtils = function(config) {
+    var _config = config || /** @type {KLF_TestUtilsConfig} */ ({});
+    this.recordTracker = _config.recordTracker || new global.KLF_TestUtils.RecordTracker();
+    this.commonGroupName = _config.commonGroupName || gs.getProperty('KLF_TestUtils.common_group_name', 'KLF_TestGroup');
+    this.commonUsername = _config.commonUsername || gs.getProperty('KLF_TestUtils.common_username', 'KLF_TestUser');
+    this.adminUsername = _config.adminUsername || gs.getProperty('KLF_TestUtils.admin_username', 'KLF_TestAdminUser');
+};
 
-}
-// @ts-ignore
-var global = global || {};
+/**
+ * Used to keep track of records that are created. This is useful for cleaning up after tests
+ * Has the ability to delete the records after the test is done
+ */
+global.KLF_TestUtils.RecordTracker = function() {
+    /** @type {KLF_Document[]} */
+    this.documents = [];
+};
 
-global.MetricUtils = function() {};
+global.KLF_TestUtils.RecordTracker.prototype = {
 
-global.MetricUtils.prototype = {
     /**
-     * @param {GlideRecord} glideRecord 
-     * @param {GlideRecord} metricDefinition 
-     * @returns {GlideRecord}
+     * @param {string} sysId 
+     * @param {string} tableName 
      */
-    createMetricInstance: function(glideRecord, metricDefinition) {
-        var metricInstance = new GlideRecord('metric_instance');
-        metricInstance.newRecord();
-        metricInstance.table = glideRecord.getRecordClassName();
-        metricInstance.id = glideRecord.sys_id;
-        metricInstance.definition = metricDefinition.sys_id;
-        metricInstance.field = metricDefinition.field;
-        return metricInstance;
+    trackBySysId: function(sysId, tableName) {
+        this.documents.push({
+            sysId: sysId,
+            tableName: tableName
+        });
+        return this;
     },
 
     /**
-     * @param {string} table 
-     * @param {string} sysId 
+     * @param {GlideRecord} glideRecord 
      */
-    clearMetricsByRelatedRecord: function(table, sysId) {
-        if (table && sysId) {
-            var metricInstance = new GlideRecord('metric_instance');
-            metricInstance.addQuery('table', table);
-            metricInstance.addQuery('id', sysId);
-            metricInstance.deleteMultiple();
-        }
+    trackByGlideRecord: function(glideRecord) {
+        this.trackBySysId(glideRecord.getUniqueValue(), glideRecord.getTableName());
+        return this;
+    },
+
+    /**
+     * Deletes all records that were tracked
+     */
+    deleteAll: function() {
+        this.documents.forEach(function(doc) {
+            var gr = new GlideRecord(doc.tableName);
+            if (gr.get(doc.sysId)) {
+                gr.deleteRecord();
+            }
+        });
     }
+};
+
+global.KLF_TestUtils.prototype = {
+
+    glideRecordUtils: new global.KLF_GlideRecordUtils(),
+
+    /**
+     * Cleans up all records that were created during the test
+     */
+    cleanup: function() {
+        this.recordTracker.deleteAll();
+    },
+
+    /**
+     * Creates a new RecordTracker instance
+     * @returns {global.KLF_TestUtils.RecordTracker} The newly created RecordTracker instance
+     */
+    createRecordTracker: function() {
+        return new global.KLF_TestUtils.RecordTracker();
+    },
+
+    /**
+     * Deletes records from the given tables that the specified
+     * user has created. Tables can be specified as a string or an array of strings
+     * @param {string} createdBySysId sys_user.sys_id
+     * @param {string|string[]} tableNames The names of the tables to delete records from
+     */
+    deleteRecordsCreatedBy: function(createdBySysId, tableNames) {
+        if (typeof tableNames === 'string') {
+            tableNames = [tableNames];
+        }
+
+        // first i need to transform the createdBySysId sys_user.sys_id
+        //into a sys_user.user_name
+        var createdBy = new GlideRecord('sys_user');
+        if (!createdBy.get(createdBySysId)) {
+            throw new Error('Could not find user with sys_id: ' + createdBySysId);
+        }
+        var createdByUserName = createdBy.getValue('user_name');
+
+        tableNames.forEach(function(tableName) {
+            if (tableName.startsWith('sys_')) {
+                throw new Error('Cannot delete records from system tables');
+            }
+            var gr = new GlideRecord(tableName);
+            if (!gr.isValid()) {
+                throw new Error('Invalid table name: ' + tableName);
+            }
+            gr.addQuery('sys_created_by', createdByUserName);
+            gr.deleteMultiple();
+        });
+    },
+
+    /**
+     * Deletes records from the given tables that the common user
+     * has created. Tables can be specified as a string or an array of strings
+     * @param {string|string[]} tableNames The names of the tables to delete records from
+     */
+    deleteRecordsCreatedByCommonUser: function(tableNames) {
+        var commonUser = this.getCommonUser();
+        if (commonUser === null) {
+            throw new Error('Could not find common user');
+        }
+        this.deleteRecordsCreatedBy(commonUser.getUniqueValue(), tableNames);
+    },
+
+    /**
+     * Executes the given function as the common user and then reverts back to the original user
+     * @param {function} func The function to execute as the given user
+     */
+    runAsCommonUser: function(func) {
+        this.runAsUser(this.createCommonUser().getUniqueValue(), func);
+    },
+
+    /**
+     * Executes the given function as the given user and then reverts back to the original user
+     * @param {string} userSysId The sys_id of the user to impersonate
+     * @param {function} func The function to execute as the given user
+     */
+    runAsUser: function(userSysId, func) {
+        var previousUserSysId = this.impersonateUser(userSysId);
+        try {
+            func();
+        } catch ( /** @type {*} */ e) {
+            gs.error(e);
+        }
+        this.impersonateUser(previousUserSysId);
+    },
+
+    /**
+     * Returns common user sys_user record or null if it does not exist
+     * @returns {?GlideRecord} The sys_user record of the common user or null if it does not exist
+     */
+    getCommonUser: function() {
+        var user = new GlideRecord('sys_user');
+        if (user.get('user_name', this.commonUsername)) {
+            return user;
+        } else {
+            return null;
+        }
+    },
+
+    /**
+     * Creates a user with no roles or groups to simulate a common user
+     * @returns {GlideRecord} The newly created sys_user record
+     */
+    createAdminUser: function() {
+        var user = this.createUser(this.adminUsername);
+        this.addRoleToUser(user, 'admin');
+        this.recordTracker.trackByGlideRecord(user);
+        return user;
+    },
+
+    /**
+     * Creates a user with no roles or groups to simulate a common user
+     * @returns {GlideRecord} The newly created sys_user record
+     */
+    createCommonUser: function() {
+        var user = this.createUser(this.commonUsername);
+        this.recordTracker.trackByGlideRecord(user);
+        return user;
+    },
+
+    /**
+     * Creates a group with no roles and whose only member is the common user.
+     * If the common user does not exist, it will be created.
+     * @returns {{group:GlideRecord,user:GlideRecord,groupMember:GlideRecord}} The newly created sys_user_group and associated sys_user and sys_user_grmember records
+     */
+    createCommonGroup: function() {
+        var group = this.createGroup(this.commonGroupName);
+        var user = this.getOrCreateCommonUser();
+        var groupMember = this.addUserToGroup(group, user);
+        return {
+            group: group,
+            user: user,
+            groupMember: groupMember
+        };
+    },
+
+    /**
+     * Retrieves a user that has admin access
+     * @returns {GlideRecord} Some user that has admin access
+     */
+    getAdminUser: function() {
+        var user = new GlideRecord('sys_user');
+        if (user.get('user_name', 'admin')) {
+            return user;
+        } else {
+            throw new Error('Could not find admin user');
+        }
+    },
+
+    /**
+     * Impersonates the admin user and returns the GlideRecord of the admin user
+     * Returns the sys_id of the current user before impersonation
+     * @returns {[GlideRecord, string]} The sys_user record for admin user and the
+     * sys_id of the current user before impersonation
+     */
+    impersonateAdminUser: function() {
+        var adminUser = this.getAdminUser();
+        var currentUser = this.impersonateUser(adminUser.getUniqueValue());
+        return [adminUser, currentUser];
+    },
+
+    /**
+     * Returns the common user sys_user record or creates it if it does not exist
+     * @returns {GlideRecord} The sys_user record of the common user
+     */
+    getOrCreateCommonUser: function() {
+        var user = this.getCommonUser();
+        if (user) {
+            return user;
+        } else {
+            return this.createCommonUser();
+        }
+    },
+
+    /**
+     * Impersonates the admin user
+     * Returns the GlideRecord of the common user that was impersonated
+     * Returns the sys_id of the current user before impersonation
+     * @returns {[GlideRecord, string]} The sys_user record for common user and the
+     * sys_id of the current user before impersonation
+     */
+    impersonateCommonUser: function() {
+        var commonUser = this.getOrCreateCommonUser();
+        var currentUser = this.impersonateUser(commonUser.getUniqueValue());
+        return [commonUser, currentUser];
+    },
+
+    /**
+     * Impersonates the user with the given sys_id
+     * @param {string} userSysId The sys_id of the user to impersonate
+     * @returns {string} The sys_id of the current user before impersonation
+     */
+    impersonateUser: function(userSysId) {
+        var impersonator = new GlideImpersonate();
+        return impersonator.impersonate(userSysId);
+    },
+
+    /**
+     * Creates a new sys_user_role 
+     * @param {string} roleName
+     */
+    createRole: function(roleName) {
+        var role = new GlideRecord('sys_user_role');
+        role.newRecord();
+        role.name = roleName;
+        role.update();
+        this.recordTracker.trackByGlideRecord(role);
+        return role;
+    },
+
+    /**
+     * Creates a new sys_user_group record
+     * @param {string} groupName - The name of the group to create
+     * @returns {GlideRecord} - The newly created sys_user_group record
+     */
+    createGroup: function(groupName) {
+        var group = this.glideRecordUtils.insertRecord('sys_user_group', {
+            name: groupName
+        });
+        this.recordTracker.trackByGlideRecord(group);
+        return group;
+    },
+
+    /**
+     * Creates a new sys_user record
+     * @param {string} username - The name of the user to create
+     * @returns {GlideRecord} - The newly created sys_user record
+     */
+    createUser: function(username) {
+        var user = this.glideRecordUtils.insertRecord('sys_user', {
+            user_name: username,
+            first_name: username + 'first',
+            last_name: username + 'last',
+            email: username + '@example.com'
+        });
+        this.recordTracker.trackByGlideRecord(user);
+        return user;
+    },
+
+    /**
+     * Adds a user to a group
+     * @param {GlideRecord} group - The group to add the user to
+     * @param {GlideRecord} user - The user to add to the group
+     * @returns {GlideRecord} The newly created sys_user_grmember record
+     */
+    addUserToGroup: function(group, user) {
+        var groupMember = this.glideRecordUtils.insertRecord('sys_user_grmember', {
+            user: user.getUniqueValue(),
+            group: group.getUniqueValue()
+        });
+        this.recordTracker.trackByGlideRecord(groupMember);
+        return groupMember;
+    },
+
+    /**
+     * Adds a role to a group
+     * @param {GlideRecord} group - The group to add the role to
+     * @param {string} roleName - The role to add to the group
+     * @returns {GlideRecord} The newly created sys_group_has_role record
+     */
+    addRoleToGroup: function(group, roleName) {
+        var role = new GlideRecord('sys_user_role');
+        if (!role.get('name', roleName)) {
+            throw new Error('Could not find role with name: ' + roleName);
+        }
+
+        var groupHasRole = this.glideRecordUtils.insertRecord('sys_group_has_role', {
+            role: role.getUniqueValue(),
+            group: group.getUniqueValue()
+        });
+        this.recordTracker.trackByGlideRecord(groupHasRole);
+        return groupHasRole;
+    },
+
+    /**
+     * Adds a role to a user
+     * @param {GlideRecord} user - The user to add the role to
+     * @param {string} roleName - The role to add to the user
+     * @returns {GlideRecord} The newly created sys_user_has_role record
+     */
+    addRoleToUser: function(user, roleName) {
+        var role = new GlideRecord('sys_user_role');
+        if (!role.get('name', roleName)) {
+            throw new Error('Could not find role with name: ' + roleName);
+        }
+
+        var userHasRole = this.glideRecordUtils.insertRecord('sys_user_has_role', {
+            role: role.getUniqueValue(),
+            user: user.getUniqueValue()
+        });
+        this.recordTracker.trackByGlideRecord(userHasRole);
+        return userHasRole;
+    },
+
+    /**
+     * Creates a sys_scope record
+     * @param {string} scopeName - The name of the scope to create
+     * @returns {GlideRecord} - The newly created sys_scope record
+     */
+    createScope: function(scopeName) {
+        if (!scopeName) {
+            throw new Error('Scope name cannot be falsy');
+        }
+
+        var scope = new GlideRecord('sys_scope');
+        if (scope.get('scope', scopeName)) {
+            throw new Error('Scope already exists');
+        }
+        scope.newRecord();
+        scope.scope = scopeName;
+        scope.name = scopeName;
+        scope.short_description = 'Scope used in ATF. You can delete this';
+        scope.version = '1.0';
+        scope.update();
+        this.recordTracker.trackByGlideRecord(scope);
+        return scope;
+    },
+
+    /**
+     * Returns the sys_id of the given scopeName
+     * @param {string} scopeName
+     * @returns {string} The sys_id of the scope with the given name
+     */
+    getScopeSysId: function(scopeName) {
+        var scope = new GlideRecord('sys_scope');
+        if (!scope.get('scope', scopeName)) {
+            throw new Error('Scope ' + scopeName + ' does not exist');
+        }
+        return scope.getUniqueValue();
+    }
+
 };
