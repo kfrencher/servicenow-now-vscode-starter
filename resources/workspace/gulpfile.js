@@ -26,6 +26,7 @@ gulp.task('concat', function() {
         return gulp.src(`${appInfo.scriptIncludePath}/**/*.js`)
             .pipe(ignore.exclude('**/*Test.script.js'))
             .pipe(ignore.exclude('KLF_TestJasmineMatchers.script.js'))
+            .pipe(ignore.exclude('KLF_TestChance.script.js'))
             .on('end', () => log('Starting concatenating ' + appInfo.scriptIncludePath + '.js'))
             .pipe(concat(name + '.js'))
             .on('end', () => log('Finished concatenating ' + name + '.js'));
