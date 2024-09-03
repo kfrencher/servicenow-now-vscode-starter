@@ -47,15 +47,15 @@ declare class GlideChoiceList {
     getChoiceNoTrim(value: string): GlideChoice;
     removeChoice(value: string): GlideChoice;
     removeChoice(index: number): GlideChoice;
-    getLabelOf(value:string): string;
-    getValueOf(label:string): string;
+    getLabelOf(value: string): string;
+    getValueOf(label: string): string;
     getSize(): number;
     toXML(xmlDocument: XMLDocument): number;
     /** Returns a Java JSONArray */
     toJSON(): any;
     /** Takes a GlideController */
     getNullOverride(glideController: any): string;
-    static getChoiceList(tableName: string,fieldName: string): GlideChoiceList;
+    static getChoiceList(tableName: string, fieldName: string): GlideChoiceList;
 }
 
 declare class GlideImportSetRun {
@@ -129,17 +129,17 @@ interface SN_UI_Action {
     setNoPop(noPop: boolean): void;
     /**
      * Sets the redirect URI for this transaction, which determines the next page the user sees.
-     * @param url URL to set as the redirect. You can provide the URL as a string or a 
-     * GlideRecord. If you pass the URL as a GlideRecord, this value takes the focus to 
+     * @param url URL to set as the redirect. You can provide the URL as a string or a
+     * GlideRecord. If you pass the URL as a GlideRecord, this value takes the focus to
      * that record's form.
      */
     setRedirectURL(url: string | GlideRecord): void;
 
     /**
-     * Sets the return URI for this transaction after a UI action is complete. You can 
-     * use this method to determine what page the user has in view when they return 
-     * from submit. 
-     * @param url URI to set as the return location after a UI action is complete. You 
+     * Sets the return URI for this transaction after a UI action is complete. You can
+     * use this method to determine what page the user has in view when they return
+     * from submit.
+     * @param url URI to set as the return location after a UI action is complete. You
      * can provide the URL as a string or a GlideRecord.
      */
     setReturnURL(url: string | GlideRecord): void;
@@ -152,7 +152,7 @@ interface SN_UI_Action {
 
 interface GlideURI {
     /**
-     * Returns the value of the specified parameter 
+     * Returns the value of the specified parameter
      */
     get(name: string): string;
     /**
@@ -164,9 +164,9 @@ interface GlideURI {
      */
     set(name: string, value: string): void;
     /**
-     * Reconstructs the URI string and performs the proper URL encoding by 
+     * Reconstructs the URI string and performs the proper URL encoding by
      * converting non-valid characters to their URL code.
-     * For example, converting & to '%26'.  Parameters set with the set() 
+     * For example, converting & to '%26'.  Parameters set with the set()
      * method are encoded with the URI as well.
      */
     toString(): string;
@@ -179,7 +179,7 @@ declare class GlideDBObjectManager {
      * @example
      * GlideDBObjectManager.getTables('incident').toArray().join()
      */
-    static getTables(tableName: string): any
+    static getTables(tableName: string): any;
 }
 
 declare class GlideTableDescriptor {
@@ -191,11 +191,10 @@ declare class GlideTableDescriptor {
 
 declare class GlideImpersonate {
     /**
-     * Verifies whether the specified user can perform debugging on scripts. 
+     * Verifies whether the specified user can perform debugging on scripts.
      * In order for a user to be able to debug scripts, they must be on a developer instance. Debugging is not allowed on production instances.
      */
     canDebug(userSysId: string): boolean;
-
 
     /**
      * Verifies whether the current user can impersonate the specified user.
@@ -206,7 +205,7 @@ declare class GlideImpersonate {
 
     /**
      * Sets the user ID for the current administrator to the passed-in user ID, enabling the administrator to act as that user.
-     * @param userSysId 
+     * @param userSysId
      * @returns Sys_id of the user that was logged in prior to the impersonation request.
      */
     impersonate(userSysId: string): string;
@@ -216,7 +215,6 @@ declare class GlideImpersonate {
      * @returns {boolean} True if the current user is impersonating another user, false otherwise.
      */
     isImpersonating(): boolean;
-
 }
 
 /** The scoped GlideDate class provides methods for performing operations on GlideDate objects, such as instantiating GlideDate objects or working with GlideDate fields */
@@ -485,7 +483,7 @@ declare class GlideSession {
 }
 /** The scoped GlideAggregate class is an extension of GlideRecord and allows database aggregation (COUNT, SUM, MIN, MAX, AVG) queries to be done. This can be helpful in creating customized reports or in calculations for calculated fields. The GlideAggregate class works only on number fields. Since currency fields are strings, you can't use the GlideAggregate class on currency fields */
 declare class GlideAggregate {
-    [index:string]: any;
+    [index: string]: any;
     constructor(tableName: string);
     /** Adds a query to the aggregate */
     addQuery(field: string, operator: string, value: any): GlideQueryCondition;
@@ -621,8 +619,8 @@ declare class GlideRecord {
     /**
      * Apply a template record from the Template table [sys_template] to the current record.
      *  If the specified template is not found, no action is taken.
-     * Note: This method automatically instantiates a now_GR.insert() method if a template 
-     * has the Next Related Child Template field filled. For information, see Create 
+     * Note: This method automatically instantiates a now_GR.insert() method if a template
+     * has the Next Related Child Template field filled. For information, see Create
      * templates for related task records.
      * @param template Name of a template from the Templates [sys_template] table.
      */
@@ -658,7 +656,11 @@ declare class GlideRecord {
     /** Adds a filter to return records where the specified field is not null */
     addNotNullQuery(fieldName: string): GlideQueryCondition;
     /** Adds a filter to return records based on a relationship in a related table */
-    addJoinQuery(joinTable: string, primaryField: any, joinTableField: any): GlideQueryCondition;
+    addJoinQuery(
+        joinTable: string,
+        primaryField: any,
+        joinTableField: any
+    ): GlideQueryCondition;
     /** Retrieves the GlideElement for a specified field */
     getElement(fieldName: string): GlideElement;
     getElements(): GlideElement[];
@@ -734,8 +736,7 @@ declare class GlideRecord {
     addFunction(functionDefinition: string): void;
 }
 /** GlideRecordSecure is a class inherited from GlideRecord that performs the same functions as GlideRecord, and also enforces ACLs */
-declare class GlideRecordSecure extends GlideRecord {
-}
+declare class GlideRecordSecure extends GlideRecord {}
 /** The scoped QueryCondition API provides additional AND or OR conditions that can be added to the current condition, allowing you to build complex queries such as: category='hardware' OR category='software' AND priority='2' AND priority='1' */
 declare class GlideQueryCondition {
     constructor();
@@ -757,8 +758,7 @@ declare class GlideScopedEvaluator {
     getVariable(name: string): any;
 }
 /** A wrapper around an InputStream. No functions are provided to manipulate the stream from script. Rather this object can be passed to any API which takes an InputStream as an input parameter */
-declare class GlideScriptableInputStream {
-}
+declare class GlideScriptableInputStream {}
 /** ServiceNow processors are equivalent to Java servlets. Processors provide a customizable URL endpoint that can execute arbitrary server-side Javascript code and produce output such as TEXT, JSON, or HTML. The GlideScriptedProcessor APIs are used in processor scripts to access the the processor (servlet) capabilities. There are no constructors for the GlideScriptedProcessor APIs. The methods are called using the global variable g_processor. A useful global variable, g_target, is available in processor scripts. It contains the table name extracted from the URL. The URL to a processor has the format: https://<instance name.servicenow.com>/<path endpoint>.do?<parameter endpoint>=<value> where the path endpoint and parameter endpoint are defined on the processor form */
 declare class GlideScriptedProcessor {
     constructor();
@@ -802,7 +802,11 @@ declare class GlideServletResponse {
 /** The scoped GlideFilter class allows you to determine if a record meets a specified set of requirements. There is no constructor for scoped GlideFilter, it is accessed by using the global object 'GlideFilter' */
 declare class GlideFilter {
     /** Returns true when the record meets the filter condition */
-    static checkRecord(gr: GlideRecord, filter: string, value?: boolean): boolean;
+    static checkRecord(
+        gr: GlideRecord,
+        filter: string,
+        value?: boolean
+    ): boolean;
     /**
      * @param filter encoded query string in standard glide format
      * @param title Descriptive title for filter
@@ -960,8 +964,20 @@ interface gs {
     /** Gets a reference to the current Glide session */
     getSession(): GlideSession;
     /** Queues an event for the event manager */
-    eventQueue(name: string, record: GlideRecord, parm1?: string|string[]|null, parm2?: string|string[]|null, queue?: string): void;
-    eventQueueScheduled(name: string, record: GlideRecord, parm1: string|string[]|null, parm2: string|string[]|null, date: GlideDateTime | GlideElement): void;
+    eventQueue(
+        name: string,
+        record: GlideRecord,
+        parm1?: string | string[] | null,
+        parm2?: string | string[] | null,
+        queue?: string
+    ): void;
+    eventQueueScheduled(
+        name: string,
+        record: GlideRecord,
+        parm1: string | string[] | null,
+        parm2: string | string[] | null,
+        date: GlideDateTime | GlideElement
+    ): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
     setProperty(key: string, value: any);
@@ -1090,13 +1106,41 @@ interface gs {
     /** Returns a String of the form :interval,value,operator */
     datePart(interval: string, value: string, operator: string): string;
     /** Uses the error level to log a message to the system log */
-    error(message: string, parm1?: Object, parm2?: Object, parm3?: Object, parm4?: Object, parm5?: Object): void;
+    error(
+        message: string,
+        parm1?: Object,
+        parm2?: Object,
+        parm3?: Object,
+        parm4?: Object,
+        parm5?: Object
+    ): void;
     /** Uses the warn level to log a message to the system log */
-    warn(message: string, parm1?: Object, parm2?: Object, parm3?: Object, parm4?: Object, parm5?: Object): void;
+    warn(
+        message: string,
+        parm1?: Object,
+        parm2?: Object,
+        parm3?: Object,
+        parm4?: Object,
+        parm5?: Object
+    ): void;
     /** Uses the info level to log a message to the system log */
-    info(message: string, parm1?: Object, parm2?: Object, parm3?: Object, parm4?: Object, parm5?: Object): void;
+    info(
+        message: string,
+        parm1?: Object,
+        parm2?: Object,
+        parm3?: Object,
+        parm4?: Object,
+        parm5?: Object
+    ): void;
     /** Uses the debug level to log a message to the system log */
-    debug(message: string, parm1?: Object, parm2?: Object, parm3?: Object, parm4?: Object, parm5?: Object): void;
+    debug(
+        message: string,
+        parm1?: Object,
+        parm2?: Object,
+        parm3?: Object,
+        parm4?: Object,
+        parm5?: Object
+    ): void;
     /** Determines if debugging is active for a specific scope */
     isDebugging(): boolean;
 }
@@ -1113,20 +1157,31 @@ interface sn_auth {
 }
 /** The OAuth client API provides methods to request and revoke OAuth tokens */
 interface GlideOAuthClient {
-    new(): GlideOAuthClient_proto;
+    new (): GlideOAuthClient_proto;
     readonly prototype: GlideOAuthClient_proto;
 }
 interface GlideOAuthClient_proto {
     /** Retrieves the token for the client, with the request parameters encoded in JSON format */
-    requestToken(clientName: string, jsonString: string): GlideOAuthClientResponse;
+    requestToken(
+        clientName: string,
+        jsonString: string
+    ): GlideOAuthClientResponse;
     /** Retrieves the token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
-    requestTokenByRequest(clientName: string, request: GlideOAuthClientRequest): GlideOAuthClientResponse;
+    requestTokenByRequest(
+        clientName: string,
+        request: GlideOAuthClientRequest
+    ): GlideOAuthClientResponse;
     /** Revokes the access or refresh token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
-    revokeToken(clientName: string, accessToken: string, refreshToken: string, request: GlideOAuthClientRequest): GlideOAuthClientResponse;
+    revokeToken(
+        clientName: string,
+        accessToken: string,
+        refreshToken: string,
+        request: GlideOAuthClientRequest
+    ): GlideOAuthClientResponse;
 }
 /** Use these methods for handling client requests */
 interface GlideOAuthClientRequest {
-    new(): GlideOAuthClientRequest_proto;
+    new (): GlideOAuthClientRequest_proto;
     readonly prototype: GlideOAuthClientRequest_proto;
 }
 interface GlideOAuthClientRequest_proto {
@@ -1163,7 +1218,7 @@ interface GlideOAuthClientRequest_proto {
 }
 /** Use these methods for retrieving the access token and information about the access token */
 interface GlideOAuthToken {
-    new(): GlideOAuthToken_proto;
+    new (): GlideOAuthToken_proto;
     readonly prototype: GlideOAuthToken_proto;
 }
 interface GlideOAuthToken_proto {
@@ -1181,7 +1236,7 @@ interface GlideOAuthToken_proto {
     getScope(): string;
 }
 interface GlideOAuthClientResponse {
-    new(): GlideOAuthClientResponse_proto;
+    new (): GlideOAuthClientResponse_proto;
     readonly prototype: GlideOAuthClientResponse_proto;
 }
 interface GlideOAuthClientResponse_proto {
@@ -1202,7 +1257,7 @@ interface GlideOAuthClientResponse_proto {
 declare namespace sn_ws {
     /** Instantiates a RESTMessageV2 object. When you have a REST message record, you can add the optional name and methodName information */
     class RESTMessageV2 {
-        constructor();
+        constructor(restMessageName?: string, functionName?: string);
         /** Send the REST message to the endpoint */
         execute(): RESTResponseV2;
         /** Send the REST message to the endpoint asynchronously. The instance does not wait for a response from the web service provider when making asynchronous calls */
@@ -1232,7 +1287,12 @@ declare namespace sn_ws {
         /** Uses the specified attachment as the request body of this REST Message. Mutually exclusive with setRequestBody */
         setRequestBodyFromAttachment(attachmentSysId: string): void;
         /** Setup the response body to be saved into the specified attachment when the request is sent. encryptCtxSysId is optional */
-        saveResponseBodyAsAttachment(tableName: string, recordSysId: string, filename: string, encryptCtxSysId: string): void;
+        saveResponseBodyAsAttachment(
+            tableName: string,
+            recordSysId: string,
+            filename: string,
+            encryptCtxSysId: string
+        ): void;
         /** Set an HTTP header to the specified value */
         setRequestHeader(name: string, value: string): void;
         /** Set a REST message function variable to the specified value */
@@ -1292,7 +1352,12 @@ declare namespace sn_ws {
         /** Set the mutual authentication protocol profile for the SOAP message */
         setMutualAuth(profileName: string): void;
         /** Set web service security values for the SOAP message */
-        setWSSecurity(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
+        setWSSecurity(
+            keystoreId: string,
+            keystoreAlias: string,
+            keystorePassword: string,
+            certificateId: string
+        ): void;
         /** Set a variable from the SOAP message record to the specified value */
         setStringParameter(name: string, value: string): void;
         /** Set a variable from the SOAP message record to the specified value without escaping XML reserved characters */
@@ -1320,7 +1385,12 @@ declare namespace sn_ws {
         /** Set WS-Security Username token */
         setWSSecurityUsernameToken(username: string, password: string): void;
         /** Set WS-Security X.509 token */
-        setWSSecurityX509Token(keystoreId: string, keystoreAlias: string, keystorePassword: string, certificateId: string): void;
+        setWSSecurityX509Token(
+            keystoreId: string,
+            keystoreAlias: string,
+            keystorePassword: string,
+            certificateId: string
+        ): void;
     }
     /** The SOAPResponseV2 API allows you to use the data returned by an outbound SOAP message in JavaScript code. A SOAPResponseV2 object is returned by the SOAPMessageV2 functions execute() and executeAsync() */
     class SOAPResponseV2 {
@@ -1481,7 +1551,10 @@ declare class Transformer {
     /** Specifies the metric field that this transformer operates on */
     metric(metricName: string): TransformPart;
     /** Executes the transforms defined by this transformer over the specified time range and returns an object containing the results */
-    execute(rangeStart: GlideDateTime, rangeEnd: GlideDateTime): TransformResult;
+    execute(
+        rangeStart: GlideDateTime,
+        rangeEnd: GlideDateTime
+    ): TransformResult;
 }
 /** Defines a transformer's transforms */
 declare class TransformPart {
@@ -1533,7 +1606,11 @@ declare class TransformPart {
     /** Fits the series to the specified model using the specified parameters */
     fit(_params: Object): TransformPart;
     /** Produces a new series with the values filtered (AVG, MAX, MIN or LAST) by non-overlapping windows */
-    partition(_aggregator: string, _window: string, _base: string): TransformPart;
+    partition(
+        _aggregator: string,
+        _window: string,
+        _base: string
+    ): TransformPart;
     /** Produces a set of series where each is one of the specified percentiles of all of the data */
     fractiles(fractions: number[]): TransformPart;
     /** Rounds all values to the specified precision */
@@ -1614,11 +1691,11 @@ declare class Hashtable<T> {
     get(key: T): unknown;
     put(key: any, value: any): any;
     // @ts-ignore
-    keySet(): Set
+    keySet(): Set;
     toString(): string;
 }
 
-declare class GlideLDAPResult<T=any> {
+declare class GlideLDAPResult<T = any> {
     hasMore(): boolean;
     next(): Hashtable<T>;
 }
@@ -1627,31 +1704,31 @@ declare class GlideLDAP {
     /**
      * Returns the configuration that is used for instance. Call
      * {@link GlideLDAP#setConfigID} before calling this method
-     * protected ArrayList fBinaryAttributes = GlideProperties.getArrayList("glide.ldap.binary_attributes", "objectsid"); 
-     * protected boolean fVerbose = GlideProperties.getBoolean("glide.ldap.listen.verbose"); 
+     * protected ArrayList fBinaryAttributes = GlideProperties.getArrayList("glide.ldap.binary_attributes", "objectsid");
+     * protected boolean fVerbose = GlideProperties.getBoolean("glide.ldap.listen.verbose");
      * protected boolean fFollowRefs = GlideProperties.getBoolean("glide.ldap.follow_referral");
-     * 
-     * env.put("java.naming.factory.initial", this.fInitialContextFactory); 
-     * env.put("java.naming.provider.url", this.fLDAPUrl); 
+     *
+     * env.put("java.naming.factory.initial", this.fInitialContextFactory);
+     * env.put("java.naming.provider.url", this.fLDAPUrl);
      * env.put("java.naming.ldap.derefAliases", "never");
      * env.put("java.naming.security.protocol", "ssl");
-     * if (this.fFollowRefs) { 
-     *   env.put("java.naming.referral", "follow"); 
-     * } 
-     * if (!StringUtil.nil(this.fDN)) { 
-     *   env.put("java.naming.security.principal", this.fDN); 
-     *   env.put("java.naming.security.credentials", this.fPassword); 
-     *   env.put("java.naming.security.authentication", "simple"); 
-     * } else { 
-     *   env.put("java.naming.security.authentication", "none"); 
-     * } 
-     * 
-     * env.put("java.naming.ldap.attributes.binary", StringUtil.join(this.fBinaryAttributes, " ")); 
-     * Integer timeout = new Integer(this.fLdapTimeout * 1000); 
-     * env.put("com.sun.jndi.ldap.connect.timeout", timeout.toString()); 
-     * timeout = new Integer(this.fLdapReadTimeout * 1000); 
+     * if (this.fFollowRefs) {
+     *   env.put("java.naming.referral", "follow");
+     * }
+     * if (!StringUtil.nil(this.fDN)) {
+     *   env.put("java.naming.security.principal", this.fDN);
+     *   env.put("java.naming.security.credentials", this.fPassword);
+     *   env.put("java.naming.security.authentication", "simple");
+     * } else {
+     *   env.put("java.naming.security.authentication", "none");
+     * }
+     *
+     * env.put("java.naming.ldap.attributes.binary", StringUtil.join(this.fBinaryAttributes, " "));
+     * Integer timeout = new Integer(this.fLdapTimeout * 1000);
+     * env.put("com.sun.jndi.ldap.connect.timeout", timeout.toString());
+     * timeout = new Integer(this.fLdapReadTimeout * 1000);
      * env.put("com.sun.jndi.ldap.read.timeout", timeout.toString());
-     * 
+     *
      */
     setup(): Hashtable<string>;
     /**
@@ -1660,24 +1737,32 @@ declare class GlideLDAP {
      * @param sysId ldap_server_config.sys_id
      */
     setConfigID(sysId: string): void;
-    getMatching(rdnAddOn: string, search: string, initialQuery: boolean, maxRecords: number): GlideLDAPResult;
+    getMatching(
+        rdnAddOn: string,
+        search: string,
+        initialQuery: boolean,
+        maxRecords: number
+    ): GlideLDAPResult;
     getSearchRDN(rdnAddOn: string): string;
     authenticate(dn: string, password: string, user: string): boolean;
     getLDAPRecord(name: string, rdn: string): Hashtable<string>;
-    getMatching(rdnAddOn: string, search: string, initialQuery: boolean, maxRecords: number): GlideLDAPResult;
+    getMatching(
+        rdnAddOn: string,
+        search: string,
+        initialQuery: boolean,
+        maxRecords: number
+    ): GlideLDAPResult;
     getLDAPRecord(name: string, rdn: string): Hashtable<string>;
-
 }
-interface GlideHTTPHeader { }
-interface SOAPResponse { }
-interface WSSoapRequestDocument extends Object { }
-interface body extends RESTAPIRequestBody { }
-interface dataStream extends GlideScriptableInputStream { }
-interface Condition { }
-interface map { }
+interface GlideHTTPHeader {}
+interface SOAPResponse {}
+interface WSSoapRequestDocument extends Object {}
+interface body extends RESTAPIRequestBody {}
+interface dataStream extends GlideScriptableInputStream {}
+interface Condition {}
+interface map {}
 
 declare namespace global {
-
     class JavaArray {
         size(): number;
         get(index: number): any;
@@ -1690,7 +1775,7 @@ declare namespace global {
         concat<T>(...arrays: T[][]): T[];
 
         /**
-         * Searches the array for the specified element. Returns true if the element 
+         * Searches the array for the specified element. Returns true if the element
          * exists in the array, otherwise returns false.
          */
         contains<T>(array: T[], obj: T): boolean;
@@ -1718,13 +1803,13 @@ declare namespace global {
 
         /**
          * Finds the elements present in all arrays.
-         * Any number of arrays can be provided as parameters. 
+         * Any number of arrays can be provided as parameters.
          */
         intersect<T>(...arrays: T[][]): T[];
 
         /**
          * Merge two or more arrays.
-         * Any number of arrays can be provided as parameters. 
+         * Any number of arrays can be provided as parameters.
          */
         union<T>(...arrays: T[][]): T[];
 
@@ -1737,18 +1822,18 @@ declare namespace global {
     class DurationCalculator {
         constructor();
 
-        /** 
-         * * Set the schedule and time zone to be used for calculating the due date 
+        /**
+         * * Set the schedule and time zone to be used for calculating the due date
          */
         setSchedule(scheduleId: string, timezone?: string): void;
 
         setTimeZone(timezone: string): void;
 
-        /** 
-         * Set the start date/time for the duration calculations 
+        /**
+         * Set the start date/time for the duration calculations
          * (expects a value in GMT)
-         * 
-         * If 'start' is blank, use current date/time 
+         *
+         * If 'start' is blank, use current date/time
          */
         setStartDateTime(start: GlideDateTime | string): void;
 
@@ -1767,7 +1852,6 @@ declare namespace global {
          */
         getSeconds(): number;
 
-
         /**
          * Get the this.totalSeconds property that was set by calcDuration/calcRelativeDuration
          * indicating the total number of seconds between the start and end times of the duration.
@@ -1780,7 +1864,10 @@ declare namespace global {
          * Sets this.endDateTime (for completeness), this.seconds, and this.totalSeconds.
          * NB. returns 0 if endTime is before startTime
          */
-        calcScheduleDuration(startTime: GlideDateTime | string, endTime: GlideDateTime | string): number;
+        calcScheduleDuration(
+            startTime: GlideDateTime | string,
+            endTime: GlideDateTime | string
+        ): number;
 
         /**
          * Calculate the end date and time.
@@ -1806,7 +1893,6 @@ declare namespace global {
          */
         isAfter(glideDateTime: GlideDateTime, time: string): boolean;
 
-
         /**
          * Called from relative duration definitions, initiated by calcRelativeDuration(), as
          *    calculator.calcRelativeDueDate(calculator.startDateTime, days);
@@ -1827,13 +1913,16 @@ declare namespace global {
          * @param days Number of days for the duration
          * @param endTime Time in hh:mm:ss format that represents the time at end of the day
          */
-        calcRelativeDueDate(start: GlideDateTime, days: number, endTime?: string): boolean;
+        calcRelativeDueDate(
+            start: GlideDateTime,
+            days: number,
+            endTime?: string
+        ): boolean;
     }
 }
 
 declare class ActionUtils {
     postInsert(current: GlideRecord): void;
-
 }
 
 declare namespace sn_atf {
@@ -1852,7 +1941,12 @@ declare interface XMLDocument {
 
 declare class GlideSysAttachment {
     /** Returns comma delimited list of attachments that were copied */
-    copy(sourceTable: string, sourceId: string, targetTable: string, targetId: string): string;
+    copy(
+        sourceTable: string,
+        sourceId: string,
+        targetTable: string,
+        targetId: string
+    ): string;
     deleteAttachment(attachmentId: string): void;
     /** Returns unexecuted GlideRecord with list of attachment metadata */
     getAttachments(tableName: string, sysId: string): GlideRecord;
@@ -1863,7 +1957,22 @@ declare class GlideSysAttachment {
     /** Returns stream given sys_id of an attachment. Can use the GlideTextReader API to read the content of stream */
     getContentStream(sysId: string): GlideScriptableInputStream;
     /** Attaches a specified attachment to the specified record. Returns attachment sys_id. Returns null if the attachment was not added */
-    write(record: GlideRecord, fileName: string, contentType: string, content: string): string;
-    writeBase64(record: GlideRecord, fileName: string, contentType: string, contentAsBase64: string): string;
-    writeContentStream(record: GlideRecord, fileName: string, contentType: string, inputStream: GlideScriptableInputStream): string;
+    write(
+        record: GlideRecord,
+        fileName: string,
+        contentType: string,
+        content: string
+    ): string;
+    writeBase64(
+        record: GlideRecord,
+        fileName: string,
+        contentType: string,
+        contentAsBase64: string
+    ): string;
+    writeContentStream(
+        record: GlideRecord,
+        fileName: string,
+        contentType: string,
+        inputStream: GlideScriptableInputStream
+    ): string;
 }

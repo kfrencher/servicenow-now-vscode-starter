@@ -5452,7 +5452,6 @@ global.KLF_TableScoper.prototype = {};
 /**
  * This script include provides utility functions for unit testing.
  * 
- * It is intended to be used in conjunction with ATF. There are some general things that you might want to do when writing tests.
  * Like creating a user, creating a group, deleting records created by a user, impersonating a user etc.
  * 
  * It includes functions that allow you to:
@@ -5496,15 +5495,45 @@ global.KLF_TestUtils = function(config) {
 global.KLF_TestUtils.RecordTracker = function() {
     /** @type {KLF_Document[]} */
     this.documents = [];
+    /** @type {{[tableSysId:string]:boolean}} */
+    this.documentIndex = {};
 };
 
 global.KLF_TestUtils.RecordTracker.prototype = {
+
+    /**
+     * Returns the list of tracked documents
+     * @returns {KLF_Document[]}
+     */
+    getDocuments: function() {
+        return this.documents;
+    },
+
+    /**
+     * Returns true if the given GlideRecord is being tracked
+     * @param {GlideRecord} glideRecord
+     */
+    hasGlideRecord: function(glideRecord) {
+        return this.documentIndex[glideRecord.getUniqueValue() + glideRecord.getRecordClassName()] === true;
+    },
+
+    /**
+     * Returns true if the given document is being tracked
+     * @param {KLF_Document} document
+     */
+    hasDocument: function(document) {
+        return this.documentIndex[document.sysId + document.tableName] === true;
+    },
 
     /**
      * @param {string} sysId 
      * @param {string} tableName 
      */
     trackBySysId: function(sysId, tableName) {
+        // if it's already being tracked, don't add it again
+        if (this.documentIndex[sysId + tableName]) return this;
+
+        this.documentIndex[sysId + tableName] = true;
         this.documents.push({
             sysId: sysId,
             tableName: tableName
@@ -5522,9 +5551,11 @@ global.KLF_TestUtils.RecordTracker.prototype = {
 
     /**
      * Deletes all records that were tracked
+     * @param {boolean} [includeSystemTables] - If true, records from system tables will also be deleted
      */
-    deleteAll: function() {
+    deleteAll: function(includeSystemTables) {
         this.documents.forEach(function(doc) {
+            if (!includeSystemTables && doc.tableName.startsWith('sys_')) return;
             var gr = new GlideRecord(doc.tableName);
             if (gr.get(doc.sysId)) {
                 gr.deleteRecord();
@@ -5732,11 +5763,26 @@ global.KLF_TestUtils.prototype = {
     },
 
     /**
+     * Returns the role if it already exists or creates it if it does not exist
+     * @param {string} roleName - The name of the role to get or create
+     */
+    getOrCreateRole: function(roleName) {
+        var role = new GlideRecord('sys_user_role');
+        return role.get('name', roleName) ? role : this.createRole(roleName);
+    },
+
+    /**
      * Creates a new sys_user_role 
      * @param {string} roleName
      */
     createRole: function(roleName) {
+        // Check if the role already exists
         var role = new GlideRecord('sys_user_role');
+        if (role.get('name', roleName)) {
+            throw new Error('Role already exists');
+        }
+
+        role = new GlideRecord('sys_user_role');
         role.newRecord();
         role.name = roleName;
         role.update();
@@ -5745,16 +5791,40 @@ global.KLF_TestUtils.prototype = {
     },
 
     /**
+     * Returns the group or creates it if it does not exist
+     * @param {string} groupName 
+     */
+    getOrCreateGroup: function(groupName) {
+        var group = new GlideRecord('sys_user_group');
+        return group.get('name', groupName) ? group : this.createGroup(groupName);
+    },
+
+    /**
      * Creates a new sys_user_group record
      * @param {string} groupName - The name of the group to create
      * @returns {GlideRecord} - The newly created sys_user_group record
      */
     createGroup: function(groupName) {
-        var group = this.glideRecordUtils.insertRecord('sys_user_group', {
+        // Check if the group already exists
+        var group = new GlideRecord('sys_user_group');
+        if (group.get('name', groupName)) {
+            throw new Error('Group already exists');
+        }
+
+        group = this.glideRecordUtils.insertRecord('sys_user_group', {
             name: groupName
         });
         this.recordTracker.trackByGlideRecord(group);
         return group;
+    },
+
+    /**
+     * Returns the user or creates it if it does not exist
+     * @param {string} username 
+     */
+    getOrCreateUser: function(username) {
+        var user = new GlideRecord('sys_user');
+        return user.get('user_name', username) ? user : this.createUser(username);
     },
 
     /**
@@ -5763,7 +5833,13 @@ global.KLF_TestUtils.prototype = {
      * @returns {GlideRecord} - The newly created sys_user record
      */
     createUser: function(username) {
-        var user = this.glideRecordUtils.insertRecord('sys_user', {
+        // Check if the user already exists
+        var user = new GlideRecord('sys_user');
+        if (user.get('user_name', username)) {
+            throw new Error('User already exists');
+        }
+
+        user = this.glideRecordUtils.insertRecord('sys_user', {
             user_name: username,
             first_name: username + 'first',
             last_name: username + 'last',
@@ -5780,7 +5856,16 @@ global.KLF_TestUtils.prototype = {
      * @returns {GlideRecord} The newly created sys_user_grmember record
      */
     addUserToGroup: function(group, user) {
-        var groupMember = this.glideRecordUtils.insertRecord('sys_user_grmember', {
+        // Check if the user is already a member of the group
+        var groupMember = new GlideRecord('sys_user_grmember');
+        groupMember.addQuery('user', user.getUniqueValue());
+        groupMember.addQuery('group', group.getUniqueValue());
+        groupMember.query();
+        if (groupMember.next()) {
+            return groupMember;
+        }
+
+        groupMember = this.glideRecordUtils.insertRecord('sys_user_grmember', {
             user: user.getUniqueValue(),
             group: group.getUniqueValue()
         });
@@ -5800,7 +5885,16 @@ global.KLF_TestUtils.prototype = {
             throw new Error('Could not find role with name: ' + roleName);
         }
 
-        var groupHasRole = this.glideRecordUtils.insertRecord('sys_group_has_role', {
+        // Check if the group already has the role
+        var groupHasRole = new GlideRecord('sys_group_has_role');
+        groupHasRole.addQuery('role', role.getUniqueValue());
+        groupHasRole.addQuery('group', group.getUniqueValue());
+        groupHasRole.query();
+        if (groupHasRole.next()) {
+            return groupHasRole;
+        }
+
+        groupHasRole = this.glideRecordUtils.insertRecord('sys_group_has_role', {
             role: role.getUniqueValue(),
             group: group.getUniqueValue()
         });
@@ -5820,7 +5914,16 @@ global.KLF_TestUtils.prototype = {
             throw new Error('Could not find role with name: ' + roleName);
         }
 
-        var userHasRole = this.glideRecordUtils.insertRecord('sys_user_has_role', {
+        // Check if the user already has the role
+        var userHasRole = new GlideRecord('sys_user_has_role');
+        userHasRole.addQuery('role', role.getUniqueValue());
+        userHasRole.addQuery('user', user.getUniqueValue());
+        userHasRole.query();
+        if (userHasRole.next()) {
+            return userHasRole;
+        }
+
+        userHasRole = this.glideRecordUtils.insertRecord('sys_user_has_role', {
             role: role.getUniqueValue(),
             user: user.getUniqueValue()
         });
