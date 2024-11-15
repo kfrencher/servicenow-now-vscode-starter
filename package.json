@@ -43,7 +43,7 @@
         }
     },
     "scripts": {
-        "build": "vsce package"
+        "build": "npx vsce package"
     },
     "dependencies": {
         "adm-zip": "^0.5.10",
