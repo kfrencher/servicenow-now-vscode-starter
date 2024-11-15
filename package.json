@@ -43,7 +43,7 @@
         }
     },
     "scripts": {
-        "build": "npx vsce package"
+        "build": "npm install && npx vsce package"
     },
     "dependencies": {
         "adm-zip": "^0.5.10",
