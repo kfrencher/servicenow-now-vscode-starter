@@ -916,6 +916,11 @@ declare class XMLDocument2 {
     isValid(): boolean;
     /** Returns a string containing the XML */
     toString(): string;
+    /**
+     * When set to true, the XMLDocument2 object processes the document with XML namespaces.
+     * If you don't set this, an XML document with namespaces won't be enumerated correctly, and an XPath search would fail. 
+     */
+    setNamespaceAware(aware: boolean): void;
 }
 /** The scoped XMLNode API allows you to query values from XML nodes. XMLNodes are extracted from XMLDocument2 objects, which contain XML strings */
 declare class XMLNode {
@@ -980,7 +985,7 @@ interface gs {
     ): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
-    setProperty(key: string, value: any);
+    setProperty(key: string, value: any): void;
     urlDecode(url: string): string;
     urlEncode(url: string): string;
     base64Decode(s: string): string;
@@ -1144,115 +1149,86 @@ interface gs {
     /** Determines if debugging is active for a specific scope */
     isDebugging(): boolean;
 }
+
 /** Authentication API */
-declare const sn_auth: sn_auth;
-interface sn_auth {
-    /** The OAuth client API provides methods to request and revoke OAuth tokens */
-    GlideOAuthClient: GlideOAuthClient;
-    /** Use these methods for handling client requests */
-    GlideOAuthClientRequest: GlideOAuthClientRequest;
+declare namespace sn_auth {
+    class GlideOAuthClient {
+        getToken(requestor:string, oauthEntityProfileSysId: string): GlideOAuthToken;
+        /** Retrieves the token for the client, with the request parameters encoded in JSON format */
+        requestToken(clientName: string, jsonString: string): GlideOAuthClientResponse;
+        /** Retrieves the token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
+        requestTokenByRequest(clientName: string, request: GlideOAuthClientRequest): GlideOAuthClientResponse;
+        /** Revokes the access or refresh token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
+        revokeToken(
+            clientName: string,
+            accessToken: string,
+            refreshToken: string,
+            request: GlideOAuthClientRequest
+        ): GlideOAuthClientResponse;
+    }
+    class GlideOAuthClientRequest {
+        /** Retrieves the parameter for the parameter name you provide */
+        getParameter(name: string): void;
+        /** Sets the parameters for the name:value pair of strings you provide */
+        setParameter(name: string, value: string): void;
+        /** Retrieves the HTTP headers */
+        getHeaders(): any;
+        /** Retrieves the HTTP headers for the string you provide */
+        getHeader(name: string): void;
+        /** Sets the HTTP headers for the nave:value pair that you provide */
+        setHeader(name: string, value: string): void;
+        /** Retrieves the grant type */
+        getGrantType(): void;
+        /** Sets the grant type with the string you provide */
+        setGrantType(): void;
+        /** Retrieves the scope */
+        getScope(): string;
+        /** Sets the scope with the string you provide */
+        setScope(scope: string): void;
+        /** Retrieves the user name */
+        getUserName(): string;
+        /** Sets the user name with the string you provide */
+        setUserName(userName: string): void;
+        /** Retrieves the password */
+        getPassword(): string;
+        /** Sets the password with the string you provide */
+        setPassword(password: string): void;
+        /** Retrieves the refresh token */
+        getRefreshToken(): string;
+        /** Sets the refresh token with the string you provide */
+        setRefreshToken(refreshToken: string): void;
+    }
     /** Use these methods for retrieving the access token and information about the access token */
-    GlideOAuthToken: GlideOAuthToken;
-    GlideOAuthClientResponse: GlideOAuthClientResponse;
+    class GlideOAuthToken {
+        /** Retrieves the access token */
+        getAccessToken(): string;
+        /** Retrieves the sys_id of the token ID */
+        getAccessTokenSysID(): string;
+        /** Retrieves the lifespan of the access token in seconds */
+        getExpiresIn(): number;
+        /** Retrieves the refresh token */
+        getRefreshToken(): number;
+        /** Retrieves the sys_id of the refresh token */
+        getRefreshTokenSysID(): string;
+        /** Retrieves the scope, which is the amount of access granted by the access token */
+        getScope(): string;
+    }
+    class GlideOAuthClientResponse {
+        /** Retrieves the refresh token */
+        getToken(): GlideOAuthToken;
+        /** Retrieves the error message if authentication is not successful */
+        getErrorMessage(): string;
+        /** Retrieves the response content from an external OAuth provider. The response is in a name:value pair */
+        getResponseParameters(): any;
+        /** Retrieves the HTTP response content header from an external OAuth provider */
+        getContentType(): string;
+        /** Retrieves all of the response information, including instance information */
+        getBody(): string;
+        /** Retrieves the HTTP response code from the external OAuth provider */
+        getResponseCode(): string;
+    }
 }
-/** The OAuth client API provides methods to request and revoke OAuth tokens */
-interface GlideOAuthClient {
-    new (): GlideOAuthClient_proto;
-    readonly prototype: GlideOAuthClient_proto;
-}
-interface GlideOAuthClient_proto {
-    /** Retrieves the token for the client, with the request parameters encoded in JSON format */
-    requestToken(
-        clientName: string,
-        jsonString: string
-    ): GlideOAuthClientResponse;
-    /** Retrieves the token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
-    requestTokenByRequest(
-        clientName: string,
-        request: GlideOAuthClientRequest
-    ): GlideOAuthClientResponse;
-    /** Revokes the access or refresh token for the client, with the request and optional header parameters set into a GlideOAuthClientRequest object */
-    revokeToken(
-        clientName: string,
-        accessToken: string,
-        refreshToken: string,
-        request: GlideOAuthClientRequest
-    ): GlideOAuthClientResponse;
-}
-/** Use these methods for handling client requests */
-interface GlideOAuthClientRequest {
-    new (): GlideOAuthClientRequest_proto;
-    readonly prototype: GlideOAuthClientRequest_proto;
-}
-interface GlideOAuthClientRequest_proto {
-    /** Retrieves the parameter for the parameter name you provide */
-    getParameter(name: string): void;
-    /** Sets the parameters for the name:value pair of strings you provide */
-    setParameter(name: string, value: string): void;
-    /** Retrieves the HTTP headers */
-    getHeaders(): any;
-    /** Retrieves the HTTP headers for the string you provide */
-    getHeader(name: string): void;
-    /** Sets the HTTP headers for the nave:value pair that you provide */
-    setHeader(name: string, value: string): void;
-    /** Retrieves the grant type */
-    getGrantType(): void;
-    /** Sets the grant type with the string you provide */
-    setGrantType(): void;
-    /** Retrieves the scope */
-    getScope(): string;
-    /** Sets the scope with the string you provide */
-    setScope(scope: string): void;
-    /** Retrieves the user name */
-    getUserName(): string;
-    /** Sets the user name with the string you provide */
-    setUserName(userName: string): void;
-    /** Retrieves the password */
-    getPassword(): string;
-    /** Sets the password with the string you provide */
-    setPassword(password: string): void;
-    /** Retrieves the refresh token */
-    getRefreshToken(): string;
-    /** Sets the refresh token with the string you provide */
-    setRefreshToken(refreshToken: string): void;
-}
-/** Use these methods for retrieving the access token and information about the access token */
-interface GlideOAuthToken {
-    new (): GlideOAuthToken_proto;
-    readonly prototype: GlideOAuthToken_proto;
-}
-interface GlideOAuthToken_proto {
-    /** Retrieves the access token */
-    getAccessToken(): string;
-    /** Retrieves the sys_id of the token ID */
-    getAccessTokenSysID(): string;
-    /** Retrieves the lifespan of the access token in seconds */
-    getExpiresIn(): number;
-    /** Retrieves the refresh token */
-    getRefreshToken(): number;
-    /** Retrieves the sys_id of the refresh token */
-    getRefreshTokenSysID(): string;
-    /** Retrieves the scope, which is the amount of access granted by the access token */
-    getScope(): string;
-}
-interface GlideOAuthClientResponse {
-    new (): GlideOAuthClientResponse_proto;
-    readonly prototype: GlideOAuthClientResponse_proto;
-}
-interface GlideOAuthClientResponse_proto {
-    /** Retrieves the refresh token */
-    getToken(): GlideOAuthToken;
-    /** Retrieves the error message if authentication is not successful */
-    getErrorMessage(): string;
-    /** Retrieves the response content from an external OAuth provider. The response is in a name:value pair */
-    getResponseParameters(): any;
-    /** Retrieves the HTTP response content header from an external OAuth provider */
-    getContentType(): string;
-    /** Retrieves all of the response information, including instance information */
-    getBody(): string;
-    /** Retrieves the HTTP response code from the external OAuth provider */
-    getResponseCode(): string;
-}
+
 /** Web Services API, to send a message to a web service provider */
 declare namespace sn_ws {
     /** Instantiates a RESTMessageV2 object. When you have a REST message record, you can add the optional name and methodName information */
