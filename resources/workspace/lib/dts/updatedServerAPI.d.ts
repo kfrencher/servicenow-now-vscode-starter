@@ -916,11 +916,12 @@ declare class XMLDocument2 {
     isValid(): boolean;
     /** Returns a string containing the XML */
     toString(): string;
-    /**
+    /** 
      * When set to true, the XMLDocument2 object processes the document with XML namespaces.
-     * If you don't set this, an XML document with namespaces won't be enumerated correctly, and an XPath search would fail. 
+     * If you don't set this, an XML document with namespaces won't be enumerated correctly,
+     * and an XPath search would fail.
      */
-    setNamespaceAware(aware: boolean): void;
+    setNamespaceAware(value: boolean): void;
 }
 /** The scoped XMLNode API allows you to query values from XML nodes. XMLNodes are extracted from XMLDocument2 objects, which contain XML strings */
 declare class XMLNode {
@@ -985,7 +986,7 @@ interface gs {
     ): void;
     /** Retrieves a message from UI messages */
     getProperty(key: string, alt?: Object): string;
-    setProperty(key: string, value: any): void;
+    setProperty(key: string, value: any):void;
     urlDecode(url: string): string;
     urlEncode(url: string): string;
     base64Decode(s: string): string;
@@ -1951,4 +1952,101 @@ declare class GlideSysAttachment {
         contentType: string,
         inputStream: GlideScriptableInputStream
     ): string;
+}
+
+declare namespace sn_ih {
+  /**
+   * Builder for creating XMLStreamingAPI objects.
+   * Use this to configure attachment mode, expiration, etc.
+   */
+  class XMLStreamingBuilder {
+    constructor();
+
+    /**
+     * Creates the XML document as an attachment in the Streaming Attachments table.
+     */
+    withAttachment(): this;
+
+    /**
+     * Sets an expiration date/time for the attachment.
+     * Requires withAttachment() to be called first.
+     */
+    expiresAt(dateTime: GlideDateTime): this;
+
+    /**
+     * Builds and returns an XMLStreamingAPI object.
+     */
+    build(): XMLStreamingAPI;
+  }
+
+  /**
+   * Streaming XML writer for building large XML payloads.
+   * Returned by XMLStreamingBuilder.build().
+   */
+  class XMLStreamingAPI {
+    /** Closes the stream and releases resources. */
+    close(): void;
+
+    /** Enables pretty-print formatting for subsequent elements. */
+    enablePrettyPrint(): this;
+
+    /** Disables pretty-print formatting. */
+    disablePrettyPrint(): this;
+
+    /** Starts the XML document with an optional root element and namespace map. */
+    startDocument(rootElement?: string, namespaceDefinitionMap?: Record<string, string>): this;
+
+    /** Ends the XML document. */
+    endDocument(): this;
+
+    /** Starts a new element with optional namespace and attribute maps. */
+    startElement(
+      name: string,
+      namespaceMap?: Record<string, string>,
+      attributeMap?: Record<string, string>,
+      prefix?: string
+    ): this;
+
+    /** Ends the most recent element. */
+    endElement(): this;
+
+    /** Writes a simple element with text content. */
+    writeTextElement(name: string, text: string, prefix?: Record<string, string>): this;
+
+    /** Writes multiple elements from an array of values. */
+    writeArray(elementName: string, data: string[], wrappingElement: string): this;
+
+    /** Adds a single attribute to the current element. */
+    writeAttribute(name: string, value: string): this;
+
+    /** Adds multiple attributes to the current element. */
+    writeAttributes(attributeMap: Record<string, string>): this;
+
+    /** Adds a namespace declaration to the current element. */
+    writeNamespace(prefix: string, namespaceURI?: string): this;
+
+    /** Adds multiple namespaces to the current element. */
+    writeNamespaces(namespaceMap: Record<string, string>): this;
+
+    /** Writes raw character data inside the current element. */
+    writeCharacters(text: string): this;
+
+    /** Writes a comment node. */
+    writeComment(comment: string): this;
+
+    /** Writes a CDATA section. */
+    writeCData(data: string): this;
+
+    /** Writes a CDATA element with optional prefix map. */
+    writeCDataElement(name: string, data?: string, prefix?: Record<string, string>): this;
+
+    /** Writes a document type definition. */
+    writeDtd(dtd: string): this;
+
+    /** Returns the generated XML as a string (≤ 5 MB). */
+    getXMLString(): string;
+
+    /** Returns the sys_id of the generated attachment (≤ 200 MB). */
+    getAttachmentId(): string;
+  }
 }
