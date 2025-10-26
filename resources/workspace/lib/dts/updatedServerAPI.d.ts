@@ -1896,6 +1896,187 @@ declare namespace global {
             endTime?: string
         ): boolean;
     }
+
+    /**
+     * ServiceNow TableUtils - TypeScript Definition File
+     * Utility class for managing ServiceNow tables, extensions, and hierarchy operations.
+     */
+
+    /**
+     * Utility class for table operations in ServiceNow
+     */
+    class TableUtils {
+        /**
+         * The name of the table this instance operates on
+         */
+        tableName: string;
+
+        /**
+         * Creates a new TableUtils instance
+         * @param tableName - The name of the table to operate on
+         */
+        constructor(tableName?: string);
+
+        /**
+         * Determines if a table can be staged
+         * @returns True if the table can be staged, false otherwise
+         */
+        canStage(): boolean;
+
+        /**
+         * Drops a table from the database
+         * @param tableName - The name of the table to drop
+         */
+        drop(tableName: string): void;
+
+        /**
+         * Checks if the table exists in the database
+         * @returns True if the table exists, false otherwise
+         */
+        tableExists(): boolean;
+
+        /**
+         * Validates if a field name exists on the table
+         * @param fieldName - The name of the field to validate
+         * @returns True if the field is valid, false otherwise
+         */
+        isValidField(fieldName: string): boolean;
+
+        /**
+         * Creates a class field for a table (used in table hierarchy)
+         * @param tableName - The name of the table
+         * @param scopeId - The scope ID for the table
+         * @returns The table name
+         */
+        createClassField(tableName: string, scopeId: string): string | undefined;
+
+        /**
+         * Drops a table and cleans up associated records
+         * @param tableName - The name of the table to drop and clean
+         */
+        dropAndClean(tableName: string): void;
+
+        /**
+         * Drops a table and all of its extensions
+         * @param tableName - The name of the table to drop with extensions
+         */
+        dropTableAndExtensions(tableName: string): void;
+
+        /**
+         * Sanitizes a table name to adhere to database restrictions (80 chars, lowercase, alphanumeric + underscores)
+         * @param tableName - The table name to sanitize
+         * @returns The sanitized table name
+         */
+        sanitizeTableName(tableName: string): string;
+
+        /**
+         * Gets a valid scoped table name (prefixed with u_ or application scope)
+         * @param sys_scope - The system scope or table name
+         * @param tableName - Optional table name if sys_scope is actually the scope
+         * @returns The valid scoped table name
+         */
+        getValidTableName(sys_scope: string, tableName?: string): string;
+
+        /**
+         * Creates a table dynamically from a reference field value
+         * @param current - The table record to be created (GlideRecord)
+         * @param value - The value/label for the new table
+         * @param parent - The dictionary field record with the dynamic reference
+         * @param grandparent - The sys_db_object table record of the dictionary field
+         * @param scopeParam - Optional scope parameter
+         * @returns The name of the created or existing table
+         */
+        createTableFromDynamicReference(
+            current: GlideRecord,
+            value: string,
+            parent?: GlideRecord,
+            grandparent?: GlideRecord,
+            scopeParam?: string
+        ): string;
+
+        /**
+         * Sets up module and user role metadata for dynamic reference table creation
+         * @param current - The table record being created
+         * @param parent - The dictionary field record with the dynamic reference
+         * @param grandparent - The sys_db_object table record
+         * @param newTableName - The valid table name of the dynamic table
+         */
+        setUpModuleAndUserRoleForDynamicReferenceTableCreate(
+            current: GlideRecord,
+            parent: GlideRecord,
+            grandparent: GlideRecord,
+            newTableName: string
+        ): void;
+
+        /**
+         * Returns an array of table names in the table parent hierarchy
+         * @returns ArrayList of table names in the hierarchy
+         */
+        getTables(): JavaArray;
+
+        /**
+         * Returns an array of table extensions (child tables)
+         * @returns ArrayList of table extension names
+         */
+        getTableExtensions(): JavaArray;
+
+        /**
+         * Returns an array of all table extensions including the base table
+         * @returns ArrayList of all extension names
+         */
+        getAllExtensions(): JavaArray;
+
+        /**
+         * Gets the absolute base table in the hierarchy
+         * For example, cmdb_ci_server would return cmdb_ci
+         * @returns The absolute base table name
+         */
+        getAbsoluteBase(): string;
+
+        /**
+         * Returns a list of all classes participating in the hierarchy of the given table
+         * @returns List of all classes in the hierarchy
+         */
+        getHierarchy(): string[];
+
+        /**
+         * Checks if the table has extensions (child tables)
+         * @returns True if the table has extensions, false otherwise
+         */
+        hasExtensions(): boolean;
+
+        /**
+         * Checks if the table is a base class (has no parents but has extensions)
+         * @returns True if the table is a base class, false otherwise
+         */
+        isBaseClass(): boolean;
+
+        /**
+         * Checks if the table is a solo class (has no parents and no extensions)
+         * @returns True if the table is a solo class, false otherwise
+         */
+        isSoloClass(): boolean;
+
+        /**
+         * Cleans up orphaned rows in hierarchical table structures before dropping
+         * No-op for flattened tables (TPH)
+         * @param tableName - The name of the table to clean
+         */
+        cleanHierarchicalData(tableName: string): void;
+
+        /**
+         * Internal method marker
+         * @private
+         */
+        _dropFromDatabase(): void;
+
+        /**
+         * Returns the class identifier
+         * @private
+         * @returns "TableUtils"
+         */
+        _z(): string;
+    }
 }
 
 declare class ActionUtils {
@@ -2049,4 +2230,72 @@ declare namespace sn_ih {
     /** Returns the sys_id of the generated attachment (≤ 200 MB). */
     getAttachmentId(): string;
   }
+}
+
+declare class AMBClient {
+  connect(): void;
+  disconnect(): void;
+  abort(): void;
+  batch(data: any): void;
+  cancelTransaction(data: any): void;
+  extendSession(): void;
+  reestablishSession(): void;
+  loginComplete(): void;
+
+  getBaseURL(): string;
+  getClientId(): string;
+  getClientWindow(): Window;
+  getConnectionState(): string;
+  getConnectionEvents(): string[];
+  getEvents(): string[];
+  getState(): string;
+  getServerConnection(): any;
+  getTokenManagementExtension(): any;
+
+  getChannel(name: string, filter?: any, callback?: Function): any;
+  getChannel0(data: any, params?: any): any;
+  getChannels(): any[];
+  getRecordWatcherChannel(
+    table: string,
+    filter?: any,
+    callback?: Function,
+    data?: any,
+    params?: any
+  ): any;
+
+  isLoggedIn(): boolean;
+
+  subscribeToEvent(name: string, filter?: any, callback?: Function): void;
+  unsubscribeFromEvent(name: string, filter?: any): void;
+
+  registerExtension(name: string, extension: any): void;
+  unregisterExtension(name: string): void;
+}
+
+declare class GlideScriptRecordUtil {
+  static get(gr: GlideRecord): GlideScriptRecordUtil;
+  /**
+   * If record true record is a child class, but the specified record is a parent class
+   * this will return the child class
+   */
+  getRealRecord(): GlideRecord;
+  /**
+   * Returns a list of field labels that have changed
+   */
+  getChangedFields(): string[];
+  /**
+   * Returns a list of field labels that have changed
+   */
+  getChangedFields(ignoreList: string[]): string[];
+  getChanges(): GlideElement[];
+  /**
+   * Returns a list of field names that have changed
+   */
+  getChangedFieldNames(): string[];
+}
+
+declare class GlideTextReader {
+    constructor(inputStream: GlideScriptableInputStream);
+    readLine(): string;
+    getEncoding(): string;
 }
