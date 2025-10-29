@@ -5,6 +5,7 @@
     "dist",
     "build",
     "gulpfile.js",
+    "**/Service Portal/**/*",
     "**/*adrum*"
   ],
   "compilerOptions": {

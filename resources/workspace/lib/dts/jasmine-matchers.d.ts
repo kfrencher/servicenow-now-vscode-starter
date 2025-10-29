@@ -1,5 +1,9 @@
 declare namespace jasmine {
+  interface ArrayLikeMatchers<T> extends Matchers<ArrayLike<T>> {
+      toBeEqual(expected: Expected<ArrayLike<T>> | ArrayContaining<T>, expectationFailOutput?: any): boolean;
+  }
   interface Matchers<T> {
+    toBeEqual(expected: Expected<T>, expectationFailOutput?: any): boolean;
     toBeAfter(otherDate: Date, expectationFailOutput?: any): boolean;
     toBeArray(expectationFailOutput?: any): boolean;
     toBeArrayOfBooleans(expectationFailOutput?: any): boolean;

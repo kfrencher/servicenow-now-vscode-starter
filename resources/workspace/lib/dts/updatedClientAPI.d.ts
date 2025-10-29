@@ -16,6 +16,8 @@ declare var GlideOverlay: any;
 declare var triggerAction: any;
 declare var loadForm: any;
 
+declare function addRenderEvent(callback: () => void): void;
+
 declare class GlideModal {
     /**
      * @param id The UI page to load into the modal.

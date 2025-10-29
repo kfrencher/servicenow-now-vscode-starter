@@ -158,16 +158,31 @@ var global = global || {};
  * 
  * // This will generate Fiscal Quarter calendar for the years 1999 to 2040
  * // This must be run in global scope
- * // You will receive the error: "Could not find calendar using name: Fiscal Year"
+ * // You will receive the error: "Could not find calendar using name: Fiscal Quarter"
  * // if you have not created a calendar with the name "Fiscal Quarter" in the system
  * // before calling this method
- * global.KLF_CalendarCreator.createFiscalYearNameEntries(1999, 2040);
- * global.KLF_CalendarCreator.createFiscalYearEntries(1999, 2040); 
+ * global.KLF_CalendarCreator.createFiscalQuarterNameEntries(1999, 2040);
+ * global.KLF_CalendarCreator.createFiscalQuarterEntries(1999, 2040); 
  */
 
-global.KLF_CalendarCreator = (function() {
+/**
+ * @typedef {Object} KLF_CalendarCreatorConfig
+ * @property {string} [fiscalYearCalendarName='Fiscal Year']
+ * @property {string} [fiscalQuarterCalendarName='Fiscal Quarter']
+ */
+/**
+ * @param {KLF_CalendarCreatorConfig} [config]
+ */
+global.KLF_CalendarCreator = function(config) {
+    /** @type {KLF_CalendarCreatorConfig} */
+    var _config = config || {
+        fiscalQuarterCalendarName: '',
+        fiscalYearCalendarName: ''
+    };
+    var fiscalYearCalendarName = _config.fiscalYearCalendarName || 'Fiscal Year';
+    var fiscalQuarterCalendarName = _config.fiscalQuarterCalendarName || 'Fiscal Quarter';
+
     return {
-        fiscalQuarterCalendarName: 'Fiscal Quarter',
         /**
          * business_calendar that holds calendar data
          * @param {string} calendarName
@@ -188,7 +203,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {GlideRecord} business_calendar_span_name
          */
         getQuarterSpanName: function(quarterName, year) {
-            var calendar = this.getCalendarByName(this.fiscalQuarterCalendarName);
+            var calendar = this.getCalendarByName(fiscalQuarterCalendarName);
             var quarter = new GlideRecord('business_calendar_span_name');
             quarter.addQuery('calendar', calendar.getUniqueValue());
             quarter.addQuery('short_name', this.getFiscalQuarterSpanNameShortName(quarterName, year));
@@ -208,13 +223,13 @@ global.KLF_CalendarCreator = (function() {
          */
         getQuarterDateRange: function(quarterName, year) {
             if (quarterName == 'Q1') {
-                return [year - 1 + '-10-01 00:00:00', year + '-01-01 00:00:00'];
+                return [year - 1 + '-10-01 00:00:00', year - 1 + '-12-31 23:59:59'];
             } else if (quarterName == 'Q2') {
-                return [year + '-01-01 00:00:00', year + '-04-01 00:00:00'];
+                return [year + '-01-01 00:00:00', year + '-03-31 23:59:59'];
             } else if (quarterName == 'Q3') {
-                return [year + '-04-01 00:00:00', year + '-07-01 00:00:00'];
+                return [year + '-04-01 00:00:00', year + '-06-30 23:59:59'];
             } else if (quarterName == 'Q4') {
-                return [year + '-07-01 00:00:00', year + '-10-01 00:00:00'];
+                return [year + '-07-01 00:00:00', year + '-09-30 23:59:59'];
             } else {
                 throw 'No date range defined for quarter: ' + quarterName;
             }
@@ -227,7 +242,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {GlideRecord} a persisted business_calendar_span
          */
         createQuarter: function(quarterName, year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalQuarterCalendarName).getUniqueValue();
+            var calendarSysId = this.getCalendarByName(fiscalQuarterCalendarName).getUniqueValue();
             var spanNameSysId = this.getQuarterSpanName(quarterName, year).getUniqueValue();
             var calendarSpan = new GlideRecord('business_calendar_span');
             var dateRange = this.getQuarterDateRange(quarterName, year);
@@ -314,7 +329,15 @@ global.KLF_CalendarCreator = (function() {
          * @param {number} year
          */
         createFiscalQuarterName: function(quarter, year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalQuarterCalendarName).getUniqueValue();
+            if(!quarter) {
+                throw new Error('Quarter must be provided');
+            }
+
+            if(!year) {
+                throw new Error('Year must be provided');
+            }
+
+            var calendarSysId = this.getCalendarByName(fiscalQuarterCalendarName).getUniqueValue();
             var spanName = new GlideRecord('business_calendar_span_name');
             var shortName = this.getFiscalQuarterSpanNameShortName(quarter, year);
             spanName.addQuery('short_name', shortName);
@@ -331,8 +354,6 @@ global.KLF_CalendarCreator = (function() {
             return spanName;
         },
 
-        fiscalYearCalendarName: 'Fiscal Year',
-
         /**
          * Uses the year to return a pair that represent the start and end
          * date of the year
@@ -340,7 +361,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {[string,string]} A pair representing the start and end
          */
         getYearDateRange: function(year) {
-            return [year - 1 + '-10-01 00:00:00', year + '-10-01'];
+            return [year - 1 + '-10-01 00:00:00', year + '-09-30 23:59:59'];
         },
 
         /**
@@ -349,7 +370,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {GlideRecord} business_calendar_span_name
          */
         getYearSpanName: function(year) {
-            var calendar = this.getCalendarByName(this.fiscalYearCalendarName);
+            var calendar = this.getCalendarByName(fiscalYearCalendarName);
             var yearSpanName = new GlideRecord('business_calendar_span_name');
             yearSpanName.addQuery('calendar', calendar.getUniqueValue());
             yearSpanName.addQuery('short_name', year.toString());
@@ -368,7 +389,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {GlideRecord} a persisted business_calendar_span
          */
         createYear: function(year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalYearCalendarName).getUniqueValue();
+            var calendarSysId = this.getCalendarByName(fiscalYearCalendarName).getUniqueValue();
             var spanNameSysId = this.getYearSpanName(year).getUniqueValue();
             var calendarSpan = new GlideRecord('business_calendar_span');
             var dateRange = this.getYearDateRange(year);
@@ -416,7 +437,7 @@ global.KLF_CalendarCreator = (function() {
          * @returns {GlideRecord}
          */
         createFiscalYearName: function(year) {
-            var calendarSysId = this.getCalendarByName(this.fiscalYearCalendarName).getUniqueValue();
+            var calendarSysId = this.getCalendarByName(fiscalYearCalendarName).getUniqueValue();
             var spanName = new GlideRecord('business_calendar_span_name');
             /**@ts-ignore */
             var shortName = year.toString();
@@ -434,7 +455,8 @@ global.KLF_CalendarCreator = (function() {
             return spanName;
         }
     };
-})();
+
+};
 /**
  * This class is used to execute shell commands on a mid server. The command is executed by sending an
  * ecc_queue record to the mid server by {@link global.KLF_CommandProbe#executeCommand}. 
@@ -619,10 +641,8 @@ var global = global || {};
  * incident.next();
  * var transferUtils = new global.KLF_DataTransferUtils();
  * transferUtils.enhancedAddToUpdateSet(incident);
- * @param {boolean} [isGlobal=false] true if the application is a global application
  */
-global.KLF_DataTransferUtils = function(isGlobal) {
-    this.isGlobal = isGlobal;
+global.KLF_DataTransferUtils = function() {
 };
 
 /**
@@ -630,10 +650,9 @@ global.KLF_DataTransferUtils = function(isGlobal) {
  * Logs the export summary to syslog with the source of KLF_DataTransferUtils
  * Refer to {@link global.KLF_DataTransferUtils.generateExportSummary}
  * @param {string} scopeName
- * @param {boolean} isGlobal
  */
-global.KLF_DataTransferUtils.logExportSummary = function(scopeName, isGlobal) {
-    var transferUtils = new global.KLF_DataTransferUtils(isGlobal);
+global.KLF_DataTransferUtils.logExportSummary = function(scopeName) {
+    var transferUtils = new global.KLF_DataTransferUtils();
     gs.log(JSON.stringify(transferUtils.generateExportSummary(scopeName), null, 4), 'KLF_DataTransferUtils');
 };
 
@@ -915,14 +934,17 @@ global.KLF_DataTransferUtils.prototype = {
 
         var tables = [];
         var tableDefinition = new GlideRecord("sys_db_object");
-        if (this.isGlobal) {
-            // if this is a global namespace then use the name because
-            // all global scopes will have a namespace of global, but the
-            // name will be different
-            tableDefinition.addQuery("sys_scope.name", scopeNamespace);
-        } else {
-            tableDefinition.addQuery("sys_scope.scope", scopeNamespace);
-        }
+		// Scope.Scope = scopeNamespace
+		// OR
+		// Scope.Name = scopeNamespace AND Scope.Scope = global
+        tableDefinition.addEncodedQuery([
+			'sys_scope.scope=' + scopeNamespace,
+			'^scriptable_table=false',
+			'^NQ', // This means New Query. It's a way of running two distinct filters
+			'sys_scope.name=' + scopeNamespace,
+			'^sys_scope.scope=global',
+			'^scriptable_table=false'
+		].join(''));
         tableDefinition.addQuery("scriptable_table", false);
         tableDefinition.query();
         while (tableDefinition.next()) {
@@ -1033,6 +1055,7 @@ global.KLF_DataTransferUtils.prototype = {
         while (journal.next()) {
             // Using saveRecord to add these records to the update set directly w/out
             // going through all the things that addToUpdateSet does
+            // 
             new global.addToUpdateSetUtils().saveRecord(journal, true, false);
         }
     },
@@ -1868,7 +1891,7 @@ KLF_LdapGroupService.prototype = {
      */
     getGroupByDn: function(dn) {
         var group = new GlideRecord('sys_user_group');
-        if (group.get('source', 'ldap: ' + dn)) {
+        if (group.get('source', 'ldap:' + dn)) {
             return group;
         } else {
             return null;
@@ -1988,7 +2011,7 @@ KLF_LdapGroupService.prototype = {
         var group = new GlideRecord('sys_user_group');
         group.newRecord();
         group.name = this.getNameFromDn(ldapGroup.dn);
-        group.source = 'ldap: ' + ldapGroup.dn;
+        group.source = 'ldap:' + ldapGroup.dn;
         var _types = types ? this.getTypes(types) : [];
         // @ts-ignore 
         group.type = [].concat([this.getOrCreateIngestGroupType()],
@@ -2501,10 +2524,11 @@ global.KLF_MetricUtils.prototype = {
      * called from the business rule that will be in the application scope.
      */
     queueMetricUpdate: function() {
-        var gru = new GlideScriptRecordUtil.get(current);
+        var gru = GlideScriptRecordUtil.get(current);
         var fieldsChanged = gru.getChangedFieldNames();
         var gr = getDefinitions(fieldsChanged);
-        fields = '';
+        /** @type {string} */
+        var fields = '';
         while (gr.next())
             fields += gr.field + ',';
 
@@ -2513,6 +2537,10 @@ global.KLF_MetricUtils.prototype = {
             gs.eventQueue('metric.update', current, fields, current.sys_mod_count, 'metric_update');
         }
 
+        /**
+         * @param {string[]} fields 
+         * @returns {GlideAggregate}
+         */
         function getDefinitions(fields) {
             var gr = new GlideAggregate('metric_definition');
             gr.addActiveQuery();
@@ -2525,6 +2553,407 @@ global.KLF_MetricUtils.prototype = {
         }
     }
 };
+/**
+ * This script is a utility class for migrating records between different scopes in ServiceNow.
+ * It extends the KLF_RecordSync class and provides additional functionality for transforming data.
+ * 
+ * KLF_RecordSync will transfer data from one instance to another. This object allows the data to
+ * be transformed before it is sent to the target instance. This is useful when you need to change the
+ * target table or other data before it is sent to the target instance.
+ */
+
+/**
+ * @typedef {global.KLF_RecordSync & KLF_MigratorUtils} KLF_MigratorUtils_Class
+ */
+
+/**
+ * @typedef {Object} KLF_MigratorUtilsConfig
+ * @property {string} sourceScope - The scope of the source records.
+ * @property {string} [sourceScopeSysId] - The sys_id of the source scope.
+ * @property {string} targetScope - The scope of the target records.
+ * @property {string} [targetScopeSysId] - The sys_id of the target scope.
+ * @property {{[sourceTableName: string]: string}} [tableMap] - A map of source table names to target table names.
+ * @property {{[sourceMetadataSysId: string]: string}} [metadataMap] - A map of source metadata sys_ids to target metadata sys_ids.
+ */
+
+/**
+ * @param {KLF_MigratorUtilsConfig} config 
+ * @param {KLF_RecordSyncConnectionConfig} connectionConfig
+ * @param {KLF_RecordSync_GroupMapping?} [groupMapping]
+ * @param {KLF_RecordSync_UserMapping?} [userMapping]
+ * @example
+ * var migrator = new global.KLF_MigratorUtils({
+ *     sourceScope: 'x_53417_scoper_1',
+ *     targetScope: 'x_53417_scoper_2',
+ *     tableMap: {
+ *         'x_53417_scoper_1_scoper_task': 'x_53417_scoper_2_scoper_task'
+ *     }
+ * });
+ */
+function KLF_MigratorUtils(config, connectionConfig, groupMapping, userMapping) {
+    // Call the parent constructor (KLF_RecordSync)
+    global.KLF_RecordSync.call(this, connectionConfig, groupMapping, userMapping, this.transformData.bind(this));
+
+    var _config = config || {};
+    var sourceScopeSysId = config.sourceScopeSysId || this.getScopeSysId(_config.sourceScope);
+    if (!sourceScopeSysId) {
+        throw 'Source scope not found';
+    }
+
+    var targetScopeSysId = config.targetScopeSysId || this.getScopeSysId(_config.targetScope);
+    if (!targetScopeSysId) {
+        throw 'Target scope not found';
+    }
+
+    this.sourceScope = _config.sourceScope;
+    this.sourceScopeSysId = sourceScopeSysId;
+    this.targetScope = _config.targetScope;
+    this.targetScopeSysId = targetScopeSysId;
+    this.tableMap = _config.tableMap || {};
+};
+
+// Inherit from KLF_RecordSync
+KLF_MigratorUtils.prototype = Object.create(global.KLF_RecordSync.prototype);
+
+// Set the constructor back to KLF_MigratorUtils
+KLF_MigratorUtils.prototype.constructor = KLF_MigratorUtils;
+
+/**
+ * @memberof MY_KLF_MigratorUtils
+ * Updates the scope found in the string using the source scope.
+ * @param {string} string 
+ * @returns {string}
+ */
+KLF_MigratorUtils.prototype.updateScope = function(string) {
+    var _string = string.replace(new RegExp(this.sourceScope, 'g'), this.targetScope);
+    return string.replace(new RegExp(this.sourceScopeSysId, 'g'), this.targetScopeSysId);
+};
+
+/**
+ * Updates the table names found in the string using the table map.
+ * 
+ * @param {string} string 
+ * @returns {string}
+ */
+KLF_MigratorUtils.prototype.updateTableNames = function(string) {
+    if (!string) {
+        return string;
+    }
+
+    // I want to replace these
+    // <u_klf_test_task action="INSERT_OR_UPDATE">
+    // </u_klf_test_task>
+    // <sys_class_name>u_klf_test_task</sys_class_name>
+
+    // Do not replace this
+    // <u_klf_test_task display_value="KLF0001078">e05571fd2b5d2a100060ff42fe91bfe5</u_klf_test_task>
+
+    for (var sourceTableName in this.tableMap) {
+        var targetTableName = this.tableMap[sourceTableName];
+        string = string.replace(new RegExp('<' + sourceTableName + ' action', 'g'), '<' + targetTableName + ' action');
+        string = string.replace(new RegExp('></' + sourceTableName + '>', 'g'), '></' + targetTableName + '>');
+        string = string.replace(new RegExp('<sys_class_name>' + sourceTableName + '<', 'g'), '<sys_class_name>' + targetTableName + '<');
+    }
+    return string;
+};
+
+/**
+ * Retrieves the sys_id of a scope by its name.
+ * @param {string} scopeName - The name of the scope to look up.
+ * @returns {string|null} The sys_id of the scope if found, null otherwise.
+ */
+KLF_MigratorUtils.prototype.getScopeSysId = function(scopeName) {
+    var scopeGr = new GlideRecord('sys_scope');
+    if (scopeGr.get('scope', scopeName)) {
+        return scopeGr.getUniqueValue();
+    }
+    // Could be global scope. Need to check by name
+    var globalScope = new GlideRecord('sys_scope');
+    globalScope.addQuery('name', scopeName);
+    globalScope.query();
+    if (globalScope.getRowCount() === 1) {
+        globalScope.next();
+        return globalScope.getUniqueValue();
+    } else if (globalScope.getRowCount() > 1) {
+        throw 'Ambiguous scope name. More than one scope found with the name: ' + scopeName;
+    }
+
+    return null;
+};
+
+/**
+ * @param {global.KLF_RecordSync.Manifest} manifest
+ */
+KLF_MigratorUtils.prototype.updateManifest = function(manifest) {
+    var me = this;
+    var targetManifest = new global.KLF_RecordSync.Manifest();
+
+    // The manifest will have the source table names
+    // I need to replace the source table names with the target table names
+
+    manifest.getTables().forEach(function(sourceTableName) {
+        var targetTableName = me.tableMap[sourceTableName] || sourceTableName;
+        targetManifest.addRecords(targetTableName, manifest.getSysIdsForTable(sourceTableName));
+    });
+
+    return targetManifest;
+};
+
+/**
+ * @param {string} xml
+ * @param {global.KLF_RecordSync.Manifest} [manifest]
+ * @returns {{xml: string, manifest?: global.KLF_RecordSync.Manifest}}
+ */
+KLF_MigratorUtils.prototype.transformData = function(xml, manifest) {
+    gs.log('Before transform XML: ' + xml.substring(0,100), 'KLF_MigratorUtils');
+    var _xml = this.updateScope(xml);
+    _xml = this.updateTableNames(_xml);
+    gs.log('After transform XML: ' + _xml.substring(0,100), 'KLF_MigratorUtils');
+    var _manifest = manifest ? this.updateManifest(manifest) : undefined;
+
+    // This function is called when the record is sent to the target instance
+    // You can use this function to log the XML or do any other processing you need to do
+    return {
+        xml: _xml,
+        manifest: _manifest
+    };
+};
+
+/**
+ * @override
+ * @param {string} message 
+ */
+KLF_MigratorUtils.prototype.logError = function(message) {
+    gs.logError(message, 'KLF_MigratorUtils');
+};
+
+/**
+ * @override
+ * @param {string} message 
+ */
+KLF_MigratorUtils.prototype.logInfo = function(message) {
+    gs.log(message, 'KLF_MigratorUtils');
+};
+
+/**
+ * @override
+ * Overrides the {@link global.KLF_RecordSync.getSysIdsToInsert} function. In the migrator, the
+ * source and destination tables are different, so this function must account for the differences in table names.
+ * 
+ * This is used to filter out the sys_ids that are already in the target instance.
+ * It's primarily used to prevent sending unnecessary data to the target instance.
+ * Refer to {@link global.KLF_RecordSync.syncTable} for an example of how this is used.
+ * @param {string[]} sourceSysIds 
+ * @param {string} sourceTableName 
+ * @returns {string[]?}
+ */
+KLF_MigratorUtils.prototype.getSysIdsToInsert = function(sourceSysIds, sourceTableName) {
+    // I'm just declaring this here so the TypeScript compiler doesn't complain about references to
+    // functions in the parent class. I will reference all the functions in the parent class using this.
+    var superThis = /** @type {global.KLF_RecordSync} **/ ( /** @type {unknown} **/ (this));
+
+    // If there is a mapping for this table then use the mapping. If not then the
+    // source table name should be the target table name.
+    var targetTableName = this.tableMap[sourceTableName] || sourceTableName;
+
+    // Query the remote instance using the REST table API for the records that are in the sysIds array
+    var request = superThis.createRestMessage();
+    request.setHttpMethod('GET');
+    var endpointPath = '/api/now/table/' + targetTableName;
+    var query = [
+        'sysparm_fields=sys_id',
+        'sysparm_query=sys_idIN' + encodeURIComponent(sourceSysIds.join(','))
+    ].join('&');
+    var endpoint = request.getEndpoint() + endpointPath + '?' + query;
+    request.setEndpoint(endpoint);
+    var response = request.execute();
+
+    if (response.getStatusCode() != 200) {
+        superThis.logError('Failed to get the records from the target instance');
+        superThis.logError('Received status code: ' + response.getStatusCode());
+        superThis.logError('Received body: ' + response.getBody());
+        return null;
+    }
+
+    /** @type {{result:[{sys_id:string}]}} */
+    var responseBody;
+    try {
+        responseBody = JSON.parse(response.getBody());
+    } catch (e) {
+        superThis.logError('Failed to parse the response from the target instance');
+        superThis.logError('Received status code: ' + response.getStatusCode());
+        superThis.logError('Received body: ' + response.getBody());
+        return null;
+    }
+
+    // The sys_ids in the response represent records that already exist in the target instance
+    // Subtract the sys_ids in the response from the sysIds array to get the sys_ids that do not exist in the target instance
+    // This will be the sys_ids that need to be inserted into the target instance
+    var targetSysIds = /** @type string[] */ ([]);
+    responseBody.result.forEach(function(record) {
+        targetSysIds.push(record.sys_id);
+    });
+
+    return sourceSysIds.filter(function(sysId) {
+        return targetSysIds.indexOf(sysId) === -1;
+    });
+};
+
+//@ts-ignore
+var global = global || {};
+global.KLF_MigratorUtils = KLF_MigratorUtils;
+
+
+
+// Example of how to use the KLF_MigratorUtils class to transfer data from one instance to another
+(function() {
+    var sourceScope = 'KLF Test Global'; // The scope to sync data from
+    var scopeSysId = '34746a042bd5a2100060ff42fe91bf28'; // 
+
+    var targetScope = 'x_53417_klf_test'; // The scope to sync data to
+    var targetScopeSysId = '5374f750835da2103c9299e0deaad367'; // 
+
+    /**
+     * When initializing the KLF_MigratorUtils object you must pass in a configuration object
+     * that contains connection information to the target instance.
+     */
+    function getConnectionConfig() {
+        var connectionConfig = {
+            instanceUrl: 'https://dev229555.service-now.com/',
+            username: 'admin',
+            password: gs.getProperty('KLF_RecordSync.password'),
+            chunkSize: 20
+        };
+        return connectionConfig;
+    }
+
+    /**
+     * Creates a user mapping for the target instance
+     * @returns {KLF_RecordSync_UserMapping}
+     */
+    function createUserMapping() {
+        var connectionConfig = getConnectionConfig();
+        var userUtils = new global.KLF_RecordSync_UserUtils(connectionConfig);
+        var users = userUtils.getUniqueUsersInScope(sourceScope);
+        return userUtils.createUserMapping(users, sourceScope);
+    }
+
+    /**
+     * Creates a group mapping for the target instance
+     * @returns {KLF_RecordSync_GroupMapping}
+     */
+    function createGroupMapping() {
+        var connectionConfig = getConnectionConfig();
+        var groupUtils = new global.KLF_RecordSync_GroupUtils(connectionConfig);
+        var groups = groupUtils.getUniqueGroupsInScope(sourceScope);
+        return groupUtils.createGroupMapping(groups, sourceScope);
+    }
+
+    function transferData() {
+        var connectionConfig = getConnectionConfig();
+        var userMapping = new global.KLF_RecordSync_UserUtils(connectionConfig).getUserMapping(sourceScope);
+        var groupMapping = new global.KLF_RecordSync_GroupUtils(connectionConfig).getGroupMapping(sourceScope);
+
+        /** @type {KLF_MigratorUtils_Class} */
+        // @ts-ignore
+        var migratorUtils = new global.KLF_MigratorUtils({
+                sourceScope: sourceScope,
+                sourceScopeSysId: scopeSysId,
+                targetScope: targetScope,
+                targetScopeSysId: targetScopeSysId,
+                // The table map is used to map the source table names to the target table names
+                tableMap: {
+                    'u_klf_test_task': 'x_53417_klf_test_test_task'
+                }
+            },
+            connectionConfig,
+            userMapping,
+            groupMapping
+        );
+
+        // Sync the table from the source instance to the target instance
+        migratorUtils.syncTable('u_klf_test_task');
+    }
+
+    // Creates the user mapping. This is necessary to map the users in the source instance to the users in the target instance
+    // createUserMapping();
+
+    // Creates the group mapping. This is necessary to map the groups in the source instance to the groups in the target instance
+    // createGroupMapping();
+
+    // Transfers the data from the source instance to the target instance
+    transferData();
+});
+class KLF_OAuthHelper {
+    /**
+     * These parameters are needed to lookup the specific OAuth Requestor Profile [oauth_requestor_profile].
+     * The oauth_requestor_profile is needed to lookup tokens in the OAuth Credential [oauth_credential] table.
+     * The OAuth Credential table is where OAuth tokens are stored after ServiceNow executes an OAuth flow.
+     * 
+     * These values are provided when the OAuth token is initially retrieved. Typically using the oauth_initiator API. For more information look at "OAuth Outbound" in the ServiceNow documentation.
+     * 
+     * You can find an example of initiating an OAuth flow in the "Get OAuth Token" UI Action that is on the "REST Message" table
+     * 
+     * @param {string} requestorContext oauth_requestor_profile.requestor_context
+     * @param {string} requestorSysId oauth_requestor_profile.requestor_id
+     * @param {string} oauthEntityProfileSysId oauth_requestor_profile.oauth_entity_profile
+     * @param {number} [minimumTokenExpirationInSeconds=28800] If the token expires in less than this amount of time then the call to {KLF_OAuthHelper.getToken} will return null even if the token exists. The default is 8 hours
+     */
+    constructor(requestorContext, requestorSysId, oauthEntityProfileSysId, minimumTokenExpirationInSeconds = 28800) {
+        this.requestorContext = requestorContext;
+        this.requestorSysId = requestorSysId;
+        this.oauthEntityProfileSysId = oauthEntityProfileSysId;
+        this.minimumTokenExpirationInSeconds = minimumTokenExpirationInSeconds;
+    }
+
+    /**
+     * Returns an object that can be used to retrieve a token from OAuth Credentials [oauth_credential] or can
+     * be used to initiate a flow using "oauth_initiator"
+     * @returns {{
+     * requestorContext: string,
+     * requestorSysId: string,
+     * oauthEntityProfileSysId: string,
+     * hasAccessToken: boolean
+     * }}
+     */
+    getTokenInfo() {
+        return {
+            requestorContext: this.requestorContext,
+            requestorSysId: this.requestorSysId,
+            oauthEntityProfileSysId: this.oauthEntityProfileSysId,
+            hasAccessToken: this.hasAccessToken()
+        };
+    }
+
+    /**
+     * Returns true if access token exists and the token expiration is far enough in the future
+     * @returns {boolean}
+     */
+    hasAccessToken() {
+        return !!this.getAccessToken();
+    }
+
+    /**
+     * @returns {string?} Returns the base64 encoded access token if one exists and is far enough in the future. Elses returns null
+     */
+    getAccessToken() {
+        var oAuthClient = new sn_auth.GlideOAuthClient();
+        var glideToken = oAuthClient.getToken(this.requestorSysId, this.oauthEntityProfileSysId);
+        if (glideToken) {
+            var expiresIn = glideToken.getExpiresIn();
+            if (expiresIn > this.minimumTokenExpirationInSeconds) {
+                return glideToken.getAccessToken();
+            }
+        }
+        return null;
+    }
+}
+/**
+ * Possible enhancements:
+ * - Add the ability to resume an export. Would need the ability to track where you are in an export
+ * - Maybe sort the tables in order and keep track of when a table is completed
+ * - Might even need to track where you are in the table. Maybe by sorting by created date
+ */
 //@ts-ignore
 var global = global || {};
 
@@ -2555,6 +2984,10 @@ var global = global || {};
  * @class KLF_RecordSync
  * @param {KLF_RecordSyncConnectionConfig} connectionConfig
  * @param {KLF_RecordSync_GroupMapping?} [groupMapping]
+ * @param {KLF_RecordSync_UserMapping?} [userMapping]
+ * @param {(xml:string, manifest?:global.KLF_RecordSync.Manifest) => {xml:string, manifest?:global.KLF_RecordSync.Manifest}} [beforeTransfer] A function that is called 
+ * before the transfer is made. This is useful if you want to modify the XML before it is sent to the target instance
+ * 
  * @example
  * var recordSync = new global.KLF_RecordSync({
  *     username: 'admin',
@@ -2573,9 +3006,11 @@ var global = global || {};
  * demoApproval.addQuery('source_table', 'STARTSWITH', 'x_53417_demo');
  * recordSync.syncTable('sysapproval_approver', demoApproval.getEncodedQuery());
  */
-global.KLF_RecordSync = function(connectionConfig, groupMapping) {
+global.KLF_RecordSync = function(connectionConfig, groupMapping, userMapping, beforeTransfer) {
     this.connectionConfig = connectionConfig;
     this.groupMapping = groupMapping;
+    this.userMapping = userMapping;
+    this.beforeTransfer = beforeTransfer;
 };
 
 /**
@@ -2649,6 +3084,15 @@ global.KLF_RecordSync.Manifest.prototype = {
      * @param {GlideRecord} glideRecord 
      */
     addRecordByGlideRecord: function(glideRecord) {
+        if (!glideRecord.isValid()) {
+            // I'm going to try to get the sys_id from the record. This
+            // might fail 
+            try {
+                throw 'Invalid GlideRecord with table name: ' + glideRecord.getTableName() + ' and sys_id: ' + glideRecord.getUniqueValue();
+            } catch (e) {
+                throw 'Invalid GlideRecord with table name: ' + glideRecord.getTableName();
+            }
+        }
         this.addRecord(glideRecord.getTableName(), glideRecord.getUniqueValue());
     },
 
@@ -2794,14 +3238,15 @@ global.KLF_RecordSync.prototype = {
      * list
      * @param {string} scopeNamespace
      * @param {string[]} [excludedTables]
+     * @param {boolean} [forceSync] If true, will sync all records regardless of whether they exist in the target instance
      * @returns {global.KLF_RecordSync.Manifest}
      */
-    syncAllDataInScope: function(scopeNamespace, excludedTables) {
+    syncAllDataInScope: function(scopeNamespace, excludedTables, forceSync) {
         var tables = this.dataTransferUtils.getBaseTablesInScope(scopeNamespace, excludedTables);
         var me = this;
         var missingManifest = new global.KLF_RecordSync.Manifest();
         tables.forEach(function(table) {
-            missingManifest.addManifest(me.syncTable(table));
+            missingManifest.addManifest(me.syncTable(table, '', excludedTables, forceSync));
         });
         return missingManifest;
     },
@@ -2824,7 +3269,59 @@ global.KLF_RecordSync.prototype = {
     syncRecord: function(glideRecord) {
         var unloadDocument = this.createUnloadDocument();
         var unloadedData = this.unloadRecordWithRelatedRecords(glideRecord, unloadDocument);
-        return this.sendToRemoteInstance(this.documentToString(unloadDocument), unloadedData.manifest);
+        return this.sendToRemoteInstance(this.documentToString(unloadedData.document), unloadedData.manifest);
+    },
+
+    /**
+     * This is used to filter out the sys_ids that are already in the target instance
+     * It's primarily used to prevent sending unnecessary data to the target instance
+     * Refer to {@link global.KLF_RecordSync.syncTable} for an example of how this is used
+     * @param {string[]} sourceSysIds 
+     * @param {string} tableName 
+     * @returns {string[]?}
+     */
+    getSysIdsToInsert: function(sourceSysIds, tableName) {
+        // Query the remote instance using the REST table API for the records that are in the sysIds array
+        var request = this.createRestMessage();
+        request.setHttpMethod('GET');
+        var endpointPath = '/api/now/table/' + tableName;
+        var query = [
+            'sysparm_fields=sys_id',
+            'sysparm_query=sys_idIN' + encodeURIComponent(sourceSysIds.join(','))
+        ].join('&');
+        var endpoint = request.getEndpoint() + endpointPath + '?' + query;
+        request.setEndpoint(endpoint);
+        var response = request.execute();
+
+        if (response.getStatusCode() != 200) {
+            this.logError('Failed to get the records from the target instance');
+            this.logError('Received status code: ' + response.getStatusCode());
+            this.logError('Received body: ' + response.getBody());
+            return null;
+        }
+
+        /** @type {{result:[{sys_id:string}]}} */
+        var responseBody;
+        try {
+            responseBody = JSON.parse(response.getBody());
+        } catch (e) {
+            this.logError('Failed to parse the response from the target instance');
+            this.logError('Received status code: ' + response.getStatusCode());
+            this.logError('Received body: ' + response.getBody());
+            return null;
+        }
+
+        // The sys_ids in the response represent records that already exist in the target instance
+        // Subtract the sys_ids in the response from the sysIds array to get the sys_ids that do not exist in the target instance
+        // This will be the sys_ids that need to be inserted into the target instance
+        var targetSysIds = /** @type string[] */ ([]);
+        responseBody.result.forEach(function(record) {
+            targetSysIds.push(record.sys_id);
+        });
+
+        return sourceSysIds.filter(function(sysId) {
+            return targetSysIds.indexOf(sysId) === -1;
+        });
     },
 
     /**
@@ -2837,9 +3334,12 @@ global.KLF_RecordSync.prototype = {
      * This will return a manifest of records that were not inserted into the target instance
      * @param {string} tableName
      * @param {string} [encodedQueryString]
+     * @param {string[]} [excludedTables] This may be necessary if the table is extended and you want to exclude some of the
+     * tables that extend the base table
+     * @param {boolean} [forceSync] If true, will sync all records regardless of whether they exist in the target instance
      * @returns {global.KLF_RecordSync.Manifest}
      */
-    syncTable: function(tableName, encodedQueryString) {
+    syncTable: function(tableName, encodedQueryString, excludedTables, forceSync) {
         var me = this;
         var missingRecordsManifest = new global.KLF_RecordSync.Manifest();
 
@@ -2863,10 +3363,15 @@ global.KLF_RecordSync.prototype = {
                 source.orderBy('number');
             }
 
-            source.chooseWindow(start, start + chunkSize);
             if (encodedQueryString) {
                 source.addEncodedQuery(encodedQueryString);
             }
+
+            if (excludedTables && source.isValidField('sys_class_name')) {
+                source.addQuery('sys_class_name', 'NOT IN', excludedTables);
+            }
+
+            source.chooseWindow(start, start + chunkSize);
             source.query();
 
             var sourceSysIds = [];
@@ -2876,52 +3381,27 @@ global.KLF_RecordSync.prototype = {
 
             me.logInfo('Chunk: ' + start + ' to ' + (start + chunkSize) + ' of ' + totalRecords);
 
-            // Query the remote instance using the REST table API for the records that are in the sysIds array
-            var request = me.createRestMessage();
-            request.setHttpMethod('GET');
-            var endpointPath = '/api/now/table/' + tableName;
-            var query = [
-                'sysparm_fields=sys_id',
-                'sysparm_query=sys_idIN' + encodeURIComponent(sourceSysIds.join(','))
-            ].join('&');
-            var endpoint = request.getEndpoint() + endpointPath + '?' + query;
-            request.setEndpoint(endpoint);
-            var response = request.execute();
+            var sysIdsToInsert = forceSync ? sourceSysIds : me.getSysIdsToInsert(sourceSysIds, tableName);
 
-            if (response.getStatusCode() != 200) {
-                me.logError('Failed to get the records from the target instance');
-                me.logError('Received status code: ' + response.getStatusCode());
-                me.logError('Received body: ' + response.getBody());
+            if (!Array.isArray(sysIdsToInsert)) {
+                me.logError('Failed to get the sys_ids to insert');
                 return null;
             }
-
-            // The sys_ids in the response represent records that already exist in the target instance
-            // Subtract the sys_ids in the response from the sysIds array to get the sys_ids that do not exist in the target instance
-            // This will be the sys_ids that need to be inserted into the target instance
-            var targetSysIds = /** @type string[] */ ([]);
-            /** @type {{result:[{sys_id:string}]}} */
-            var responseBody = JSON.parse(response.getBody());
-            responseBody.result.forEach(function(record) {
-                targetSysIds.push(record.sys_id);
-            });
-            var sysIdsToInsert = sourceSysIds.filter(function(sysId) {
-                return targetSysIds.indexOf(sysId) === -1;
-            });
 
             me.logInfo(tableName + ' Syncing ' + sysIdsToInsert.length + ' records: ');
 
             // Requery the source for the records that need to be inserted into the target instance
-            var sourceToInsert = new GlideRecord(tableName);
-            sourceToInsert.addQuery('sys_id', 'IN', sysIdsToInsert.join(','));
-            sourceToInsert.query();
-            var unloadDocument = me.createUnloadDocument();
-            var manifest = new global.KLF_RecordSync.Manifest();
-            while (sourceToInsert.next()) {
-                var unloadedData = me.unloadRecordWithRelatedRecords(sourceToInsert, unloadDocument);
-                manifest.addManifest(unloadedData.manifest);
-            }
-
-            if (sysIdsToInsert.length > 0) {
+			if (sysIdsToInsert.length > 0) {
+				var sourceToInsert = new GlideRecord(tableName);
+				sourceToInsert.addQuery('sys_id', 'IN', sysIdsToInsert.join(','));
+				sourceToInsert.query();
+				var unloadDocument = me.createUnloadDocument();
+				var manifest = new global.KLF_RecordSync.Manifest();
+				while (sourceToInsert.next()) {
+					var unloadedData = me.unloadRecordWithRelatedRecords(sourceToInsert, unloadDocument);
+					manifest.addManifest(unloadedData.manifest);
+				}
+            
                 var remoteResponse = me.sendToRemoteInstance(me.documentToString(unloadDocument), manifest);
                 if (remoteResponse.success) {
                     if (remoteResponse.missingManifest) {
@@ -2945,6 +3425,10 @@ global.KLF_RecordSync.prototype = {
             if (encodedQueryString) {
                 this.logInfo(encodedQueryString);
                 glideRecord.addEncodedQuery(encodedQueryString);
+            }
+            if (excludedTables && glideRecord.isValidField('sys_class_name')) {
+                this.logInfo('Excluding tables: ' + excludedTables);
+                glideRecord.addQuery('sys_class_name', 'NOT IN', excludedTables);
             }
             glideRecord.query();
             var totalRecords = glideRecord.getRowCount();
@@ -3077,39 +3561,82 @@ global.KLF_RecordSync.prototype = {
     },
 
     /**
+     * Maps a reference field using the provided mapping
+     * @param {GlideRecord} glideRecord
+     * @param {string} fieldName 
+     * @param {{[key: string]: string}} mapping
+     */
+    mapReferenceField: function(glideRecord, fieldName, mapping) {
+        var value = mapping[glideRecord.getValue(fieldName)] ||
+            glideRecord.getValue(fieldName);
+        glideRecord.setValue(fieldName, value);
+    },
+
+    /**
+     * Maps a list field using the provided mapping
+     * @param {GlideRecord} glideRecord
+     * @param {string} fieldName 
+     * @param {{[key: string]: string}} mapping
+     */
+    mapListField: function(glideRecord, fieldName, mapping) {
+        var value = glideRecord.getValue(fieldName);
+        if (!value) {
+            return;
+        }
+        var groupSysIds = value.split(',');
+        var mappedSysIds = groupSysIds.map(function(sysId) {
+            return mapping[sysId] || sysId;
+        });
+        glideRecord.setValue(fieldName, mappedSysIds.join(','));
+    },
+
+    /**
+     * Uses the user mapping to map the users in the record to the users in the target instance
+     * @param {GlideRecord} glideRecord 
+     */
+    mapUsers: function(glideRecord) {
+        var me = this;
+
+        if (!me.userMapping) {
+            return;
+        }
+
+        var mapping = me.userMapping.mapping;
+
+        // Need to find all the fields that are user references
+        var elements = new global.ArrayUtil().convertArray(glideRecord.getElements());
+        elements.forEach(function(element) {
+            var elementDescriptor = element.getED();
+            if (elementDescriptor) {
+                var internalType = elementDescriptor.getInternalType();
+                var table;
+                if (internalType == 'reference') {
+                    table = elementDescriptor.getReference();
+                    if (table == 'sys_user') {
+                        me.mapReferenceField(glideRecord, element.getName(), mapping);
+                    }
+                } else if (internalType == 'glide_list') {
+                    table = elementDescriptor.getReference();
+                    if (table == 'sys_user') {
+                        me.mapListField(glideRecord, element.getName(), mapping);
+                    }
+                }
+            }
+        });
+    },
+
+    /**
      * Uses the group mapping to map the groups in the record to the groups in the target instance
      * @param {GlideRecord} glideRecord 
      */
     mapGroups: function(glideRecord) {
-        /**
-         * @param {string} fieldName 
-         */
-        function mapReferenceField(fieldName) {
-            var value = mapping[glideRecord.getValue(fieldName)] ||
-                glideRecord.getValue(fieldName);
-            glideRecord.setValue(fieldName, value);
-        }
+        var me = this;
 
-        /**
-         * @param {string} fieldName 
-         */
-        function mapListField(fieldName) {
-            var value = glideRecord.getValue(fieldName);
-            if (!value) {
-                return;
-            }
-            var groupSysIds = value.split(',');
-            var mappedSysIds = groupSysIds.map(function(sysId) {
-                return mapping[sysId] || sysId;
-            });
-            glideRecord.setValue(fieldName, mappedSysIds.join(','));
-        }
-
-        if (!this.groupMapping) {
+        if (!me.groupMapping) {
             return;
         }
 
-        var mapping = this.groupMapping.mapping;
+        var mapping = me.groupMapping.mapping;
 
         // Need to find all the fields that are group references
         var elements = new global.ArrayUtil().convertArray(glideRecord.getElements());
@@ -3121,12 +3648,12 @@ global.KLF_RecordSync.prototype = {
                 if (internalType == 'reference') {
                     table = elementDescriptor.getReference();
                     if (table == 'sys_user_group') {
-                        mapReferenceField(element.getName());
+                        me.mapReferenceField(glideRecord, element.getName(), mapping);
                     }
                 } else if (internalType == 'glide_list') {
                     table = elementDescriptor.getReference();
                     if (table == 'sys_user_group') {
-                        mapListField(element.getName());
+                        me.mapListField(glideRecord, element.getName(), mapping);
                     }
                 }
             }
@@ -3149,6 +3676,9 @@ global.KLF_RecordSync.prototype = {
         // This will map the groups in the record to the groups in the target instance
         // if a group mapping is provided in the constructor
         this.mapGroups(glideRecord);
+
+        // This will map the users in the record to the users in the target instance
+        this.mapUsers(glideRecord);
 
         // @ts-ignore
         var _document = document || global.GlideXMLUtil.newDocument('unload');
@@ -3218,10 +3748,10 @@ global.KLF_RecordSync.prototype = {
     documentToString: function(document, prettyPrint) {
         if (prettyPrint) {
             // @ts-ignore
-            return global.GlideXMLUtil.toIndentedString(document);
+            return String(global.GlideXMLUtil.toIndentedString(document));
         } else {
             // @ts-ignore
-            return global.GlideXMLUtil.toString(document);
+            return String(global.GlideXMLUtil.toString(document));
         }
     },
 
@@ -3257,15 +3787,25 @@ global.KLF_RecordSync.prototype = {
      * 
      * @param {string} xml 
      * @param {global.KLF_RecordSync.Manifest} [manifest]
+     * before the request is sent. It can be used to modify the XML or manifest before sending it to the target instance
      * @returns {KLF_SendToRemoteInstanceResponse}
      */
     sendToRemoteInstance: function(xml, manifest) {
+        var _xml = xml;
+        var _manifest = manifest;
+
+        if (this.beforeTransfer) {
+            var result = this.beforeTransfer(xml, manifest);
+            _xml = result.xml;
+            _manifest = result.manifest;
+        }
+
         var request = this.createRestMessage();
         request.setHttpMethod('POST');
         request.setRequestHeader('Content-Type', 'application/xml');
         var endpoint = request.getEndpoint() + gs.getProperty('KLF_RecordSync.endpoint.import.path');
         request.setEndpoint(endpoint);
-        request.setRequestBody(xml);
+        request.setRequestBody(_xml);
         var response = request.execute();
         if (response.getStatusCode() != 200) {
             this.logError('Failed to load the record into the target instance');
@@ -3280,11 +3820,11 @@ global.KLF_RecordSync.prototype = {
 
         var payload = response.getBody();
 
-        if (manifest) {
+        if (_manifest) {
             return {
                 success: true,
                 payload: payload,
-                missingManifest: this.validateSync(manifest)
+                missingManifest: this.validateSync(_manifest)
             };
         } else {
             return {
@@ -3357,6 +3897,103 @@ global.KLF_RecordSync.prototype = {
     }
 
 };
+
+(function() {
+    var scope = 'x_53417_demo';
+
+    /**
+     * When initializing the KLF_RecordSync object you must pass in a configuration object
+     * that contains connection information to the target instance.
+     */
+    function getConnectionConfig() {
+        var connectionConfig = {
+            instanceUrl: 'https://dev229555.service-now.com/',
+            username: 'admin',
+            password: gs.getProperty('KLF_RecordSync.password'),
+            chunkSize: 20
+        };
+        return connectionConfig;
+    }
+
+    /**
+     * Creates a user mapping for the target instance
+     * @returns {KLF_RecordSync_UserMapping}
+     */
+    function createUserMapping() {
+        var connectionConfig = getConnectionConfig();
+        var userUtils = new global.KLF_RecordSync_UserUtils(connectionConfig);
+        var users = userUtils.getUniqueUsersInScope(scope);
+        return userUtils.createUserMapping(users, scope);
+    }
+
+    /**
+     * Creates a group mapping for the target instance
+     * @returns {KLF_RecordSync_GroupMapping}
+     */
+    function createGroupMapping() {
+        var connectionConfig = getConnectionConfig();
+        var groupUtils = new global.KLF_RecordSync_GroupUtils(connectionConfig);
+        var groups = groupUtils.getUniqueGroupsInScope(scope);
+        return groupUtils.createGroupMapping(groups, scope);
+    }
+
+    /**
+     * Checks the target instance for notifications that need to be updated
+     */
+    function checkNotifications() {
+        var connectionConfig = getConnectionConfig();
+        var groupUtils = new global.KLF_RecordSync_GroupUtils(connectionConfig);
+        var notifications = groupUtils.getNotificationsUsingGroupsInScope(scope);
+        if (notifications.length > 0) {
+            gs.info('Check Notifications: ' + notifications.join('\n'));
+        } else {
+            gs.info('No notifications found');
+        }
+    }
+
+    /**
+     * Updates the notifications in the target instance
+     */
+    function updateNotifications() {
+        var connectionConfig = getConnectionConfig();
+        var groupUtils = new global.KLF_RecordSync_GroupUtils(connectionConfig);
+        var notifications = groupUtils.getNotificationsUsingGroupsInScope(scope);
+        groupUtils.updateRemoteNotifications(groupUtils.getGroupMapping(scope), notifications);
+    }
+
+    function transferData() {
+        var connectionConfig = getConnectionConfig();
+        var userMapping = new global.KLF_RecordSync_UserUtils(connectionConfig).getUserMapping(scope);
+        var groupMapping = new global.KLF_RecordSync_GroupUtils(connectionConfig).getGroupMapping(scope);
+        var recordSync = new global.KLF_RecordSync(connectionConfig, userMapping, groupMapping);
+
+        // Example of syncing all the data in a scope
+        // This will find all tables in the x_53417_demo scope and sync all the data in those tables
+        recordSync.syncAllDataInScope('x_53417_demo');
+
+        // Example of including approvals that are associated with the scope
+        // This shows that you can also sync data that is outside of the scope as sysapproval_approver records
+        // are in the global scope
+        var demoApproval = new GlideRecord('sysapproval_approver');
+        demoApproval.addQuery('source_table', 'STARTSWITH', 'x_53417_demo');
+        recordSync.syncTable('sysapproval_approver', demoApproval.getEncodedQuery());
+    }
+
+    // Checks to see if there are any notifications that need to be updated
+    checkNotifications();
+
+    // Creates the user mapping. This is necessary to map the users in the source instance to the users in the target instance
+    createUserMapping();
+
+    // Creates the group mapping. This is necessary to map the groups in the source instance to the groups in the target instance
+    createGroupMapping();
+
+    // Transfers the data from the source instance to the target instance
+    transferData();
+
+    // Updates the notifications in the target instance. This is necessary for notifications that directly reference groups
+    updateNotifications();
+});
 /**
  * When transferring data between ServiceNow instances groups referenced in the source data set may not exist 
  * in the target instance. This utility contains functions to help manage the group data when transferring
@@ -3392,7 +4029,7 @@ global.KLF_RecordSync.prototype = {
 
 /**
  * @typedef {{
- *   groupMapping:{[localGroupSysId:string]:string},
+ *   groupMapping:KLF_RecordSync_GroupMapping,
  *   notificationSysIds:string[]
  * }} KLF_RecordSync_UpdateRemoteNotificationsRequest
  */
@@ -3898,7 +4535,14 @@ global.KLF_RecordSync_GroupUtils.prototype = {
     getNotificationsUsingGroupsInScope: function(scope) {
         var notification = new GlideRecord('sysevent_email_action');
         notification.addQuery('sys_scope.scope', scope);
-        notification.addNotNullQuery('recipient_groups');
+		notification.addEncodedQuery([
+			'sys_scope.scope=' + scope,
+			'^recipient_groupsISNOTEMPTY',
+			'^NQ', // This means New Query. It's a way of running two distinct filters
+			'sys_scope.name=' + scope,
+			'^sys_scope.scope=global',
+			'^recipient_groupsISNOTEMPTY'
+		].join(''));
         notification.query();
         var notifications = [];
         while (notification.next()) {
@@ -4715,13 +5359,13 @@ global.KLF_RecordSync_UserUtils.prototype = {
      * Finds all the fields that reference sys_user in a scoped app. This attempts to find
      * all the user fields in the system. The user fields will include both reference fields and
      * list fields that reference sys_user
-     * @param {string} scopeSysId sys_scope.sys_id
+     * @param {string} scope sys_scope.scope
      * @returns {KLF_RecordSync_UserField[]}
      */
-    getUserFieldsInScope: function(scopeSysId) {
+    getUserFieldsInScope: function(scope) {
         var me = this;
         var dataTransferUtils = new global.KLF_DataTransferUtils();
-        var tables = dataTransferUtils.getTablesInScope(scopeSysId);
+        var tables = dataTransferUtils.getTablesInScope(scope);
         return tables.reduce(function(allFields, tableName) {
             return allFields.concat(me.getUserFieldsInTable(tableName));
         }, []);
@@ -4869,7 +5513,7 @@ global.KLF_RecordSync_UserUtils.prototype = {
      */
     createUserMapping: function(userSysIds, mappingName, useCache) {
         var _useCache = useCache === undefined ? true : useCache;
-        var userRecords = new GlideRecord('sys_user_user');
+        var userRecords = new GlideRecord('sys_user');
         userRecords.addQuery('sys_id', 'IN', userSysIds);
         userRecords.query();
 
@@ -4896,7 +5540,7 @@ global.KLF_RecordSync_UserUtils.prototype = {
             });
         });
 
-        // Make a  request to sys_user_user
+        // Make a  request to sys_user
         var request = this.createRestMessage();
         request.setRequestHeader('Content-Type', 'application/json');
         request.setHttpMethod('POST');
@@ -4962,7 +5606,7 @@ global.KLF_RecordSync_UserUtils.prototype = {
      * the quiet parameter is set to true
      * 
      * This will return null if the method finds that there are no users to sync
-     * @param {string[]} userSysIds sys_user_user.sys_id[]
+     * @param {string[]} userSysIds sys_user.sys_id[]
      * @param {boolean} [quiet=false] If true then sync will proceed even if there are users that don't exist in the user list
      * @returns {KLF_SendToRemoteInstanceResponse?}
      */
@@ -5062,6 +5706,1351 @@ global.KLF_RoleUtils.prototype = {
         groupRole.addQuery("role.name", roleName);
         groupRole.query();
         return groupRole.hasNext();
+    },
+};
+// @ts-nocheck
+/**
+ * @todo This object is broken right now. Remove the ts-nocheck and fix the issues.
+ * I created it as a way to scope global objects. I stopped working on it because because
+ * I thought the method in KLF_ScoperUtils was a better approach.
+ */
+var global = global || {};
+/**
+ * Object used to copy application elements from one scope to another.
+ * This is useful when you want to duplicate a scoped application to a new scope.
+ * 
+ * The following ServiceNow objects can be copied:
+ * - Script Include (sys_script_include)
+ * - Business Rule (sys_script)
+ * - UI Action (sys_ui_action)
+ * - UI Page (sys_ui_page)
+ * - UI Policy (sys_ui_policy)
+ * - UI Script (sys_ui_script)
+ * - Client Script (sys_client_script)
+ * - REST Message (sys_rest_message)
+ * - UI View (sys_ui_view)
+ * - UI Form (sys_ui_form)
+ * - UI Form Section (sys_ui_section)
+ * - UI List (sys_ui_list)
+ * - UI Related List (sys_ui_related_list)
+ */
+
+/**
+ * @typedef {Object} KLF_ScoperConfig
+ * @property {string} sourceScope - The scope of the source records.
+ * @property {string} targetScope - The scope of the target records.
+ * @property {{[sourceTableName: string]: string}} [tableMap] - A map of source table names to target table names.
+ */
+
+/**
+ * @param {KLF_ScoperConfig} config 
+ * @example
+ * var scoper = new global.KLF_Scoper({
+ *     sourceScope: 'x_53417_scoper_1',
+ *     targetScope: 'x_53417_scoper_2',
+ *     tableMap: {
+ *         'x_53417_scoper_1_scoper_task': 'x_53417_scoper_2_scoper_task'
+ *     }
+ * });
+ * 
+ * // Copy a business rule
+ * var targetBusinessRule = scoper.copyBusinessRule('e509c3784764561058ceeb02d16d4399');
+ * 
+ * // Copy a script include
+ * var targetScriptInclude = scoper.copyScriptInclude('e509c3784764561058ceeb02d16d4399');
+ * 
+ * // Copy a column
+ * var targetColumn = scoper.copyColumn('e509c3784764561058ceeb02d16d4399', 'x_53417_scoper_2_scoper_task');
+ */
+global.KLF_Scoper = function(config) {
+    var _config = config || {};
+    var sourceScopeSysId = this.getScopeSysId(_config.sourceScope);
+    if (!sourceScopeSysId) {
+        throw 'Source scope not found';
+    }
+
+    var targetScopeSysId = this.getScopeSysId(_config.targetScope);
+    if (!targetScopeSysId) {
+        throw 'Target scope not found';
+    }
+
+    this.sourceScope = _config.sourceScope;
+    this.sourceScopeSysId = sourceScopeSysId;
+    this.targetScope = _config.targetScope;
+    this.targetScopeSysId = targetScopeSysId;
+    this.tableMap = _config.tableMap || {};
+};
+
+/**
+ * Extracts all non-system field names from a GlideRecord.
+ * 
+ * This function iterates through all fields of the given GlideRecord
+ * and returns an array of field names that do not start with 'sys_'.
+ * 
+ * @param {GlideRecord} glideRecord - The GlideRecord to extract field names from.
+ * @returns {string[]} An array of non-system field names.
+ */
+global.KLF_Scoper.getNonSysFields = function(glideRecord) {
+    var glideElements = glideRecord.getFields();
+    var elementNames = [];
+    for (var i = 0; i < glideElements.size(); i++) {
+        var glideElement = glideElements.get(i);
+        var name = glideElement.getName();
+        if (!name.startsWith('sys_')) {
+            elementNames.push(name);
+        }
+    }
+    return elementNames;
+};
+
+/**
+ * Used to copy a UI View from the source scope to the target scope.
+ * Note: An empty string is a valid value for the viewName parameter
+ * The empty viewName is the 'Default view' for a table
+ * 
+ * NOTE: The UI View (sys_ui_view) record cannot be copied. The UI View record is a unique record in the sys_ui_view table.
+ * There can only be one, so copying it would result in an error. You must account for the UI View record yourself. Sometimes
+ * this record is in global and does not need to be copied, but other times this record was created by a non-global app and may
+ * need to be created in the target scope.
+ * 
+ * @param {string} viewName sys_ui_view.name
+ * @param {string} tableName This is used to find the related form, form section, and list/related
+ * records associated with the view.
+ * @param {global.KLF_Scoper} scoper 
+ * 
+ * @example
+ * var viewCopier = new global.KLF_Scoper.ViewCopier('My View', 'x_53417_scoper_1_scoper_task');
+ * viewCopier.copy();
+ */
+global.KLF_Scoper.ViewCopier = function(viewName, tableName, scoper) {
+    if (!tableName || !new GlideRecord(tableName).isValid()) {
+        throw 'Table not found';
+    }
+
+    if (typeof viewName != 'string') {
+        throw 'View name must be a string';
+    }
+
+    this.viewName = viewName;
+    this.tableName = tableName;
+    this.scoper = scoper;
+    var view = new GlideRecord('sys_ui_view');
+    view.addQuery('name', this.viewName);
+    view.query();
+    if (!view.next()) {
+        throw 'Source UI view not found';
+    }
+    this.view = view;
+};
+
+global.KLF_Scoper.ViewCopier.prototype = {
+    /**
+     * Copies the entire view. Copies the UI View, Form, Form Section, 
+     * Section Element, List, and Related List
+     * records from the source scope to the target scope.
+     */
+    copy: function() {
+        this.copyFormView();
+    },
+
+    /**
+     * Cop
+     * @param {GlideRecord} view sys_ui_view record
+     */
+    copyUiView: function(view) {
+
+    },
+
+    /**
+     * Copies a Form (sys_ui_form) record from the source scope to the target scope.
+     * @param {GlideRecord} form sys_ui_form record
+     */
+    copyUiForm: function(form) {
+        var source = form;
+        var target = new GlideRecord('sys_ui_form');
+        target.newRecord();
+
+        var elementNames = global.KLF_Scoper.getNonSysFields(form);
+
+        for (var i = 0; i < elementNames.length; i++) {
+            var fieldName = elementNames[i];
+            target.setValue(fieldName, source.getValue(fieldName));
+        }
+
+        // sys fields are not copied a automatically. need to manually set them.
+        target.setValue('sys_name', source.getValue('sys_name'));
+
+        // Update the scope
+        target.setValue('sys_scope', this.scoper.targetScopeSysId);
+
+        // Update the table name
+        target.setValue('name', this.scoper.updateTableNames(source.getValue('name')));
+
+    },
+
+    /**
+     * Copies a form view from the source scope to the target scope.
+     * This includes:
+     * - Form (sys_ui_form), // This looks like it is only created if there are multiple form sections on th form
+     * - Form Section (sys_ui_form_section), // This controls where the section is positioned in the form
+     * - Form Section (sys_ui_section), // This is the container for all the fields in the section
+     * - Section Element (sys_ui_element), // This defines what fields are displayed in the section
+     */
+    copyFormView: function() {
+        // I'm only looking for the first form. I don't think there should be multiple forms
+        // that are not personalized that are associated with a view.
+        var form = new GlideRecord('sys_ui_form');
+        form.addQuery('view', this.view.getUniqueValue());
+        form.addNotNullQuery('sys_user'); // Intentionally excluding personalized views
+        form.orderBy('sys_updated_on'); // Just in case there are multiple forms. I want the one that was updated most recently
+        form.addQuery('name', this.tableName);
+        form.addQuery('sys_scope', this.scoper.sourceScopeSysId);
+        form.query();
+        if (form.next()) {
+            this.copyUiForm(form);
+        }
+
+        // Each form section is a collection of fields that are displayed in the section.
+        var formSection = new GlideRecord('sys_ui_section');
+        formSection.addNotNullQuery('sys_user'); // Intentionally excluding personalized views
+        formSection.addQuery('view', this.view.getUniqueValue());
+        formSection.addQuery('name', this.tableName);
+        formSection.query();
+        while (formSection.next()) {
+            gs.info('Form section found: ' + formSection.getUniqueValue());
+
+            // Each form section could have multiple Section Elements (sys_ui_element) records. These are records
+            // that define what fields are displayed in the section.
+            var sectionElement = new GlideRecord('sys_ui_element');
+            sectionElement.addQuery('sys_ui_section', formSection.getUniqueValue());
+            sectionElement.query();
+            while (sectionElement.next()) {
+                gs.info('Section element found: ' + sectionElement.getUniqueValue());
+            }
+        }
+    }
+};
+
+global.KLF_Scoper.prototype = {
+    /**
+     * Copies a UI Policy from the source scope to the target scope.
+     * Includes any related UI Policy Action (sys_ui_policy_action) records.
+     * Includes any related UI Policy Related List Action (sys_ui_policy_rl_action) records.
+     * @param {string} uiPolicySysId 
+     */
+    copyUiPolicy: function(uiPolicySysId) {},
+
+    /**
+     * Copies a UI View from the source scope to the target scope.
+     * This includes:
+     * - UI View (sys_ui_view), // This is the container for all the lists and forms related to a view name
+     * - Form (sys_ui_form), // This looks like it is only created if there are multiple form sections on th form
+     * - Form Section (sys_ui_form_section), // This controls where the section is positioned in the form
+     * - Form Section (sys_ui_section), // This is the container for all the fields in the section
+     * - Section Element (sys_ui_element), // This defines what fields are displayed in the section
+     * - List (sys_ui_list), // This defines the columns in the list
+     * - Related List (sys_ui_related_list) // This defines the columns in the related list
+     * @param {string} viewName 
+     * @param {string} tableName 
+     */
+    copyUiView: function(viewName, tableName) {
+        var viewCopier = new global.KLF_Scoper.ViewCopier(viewName, tableName, this.targetScope, this.targetScopeSysId);
+        viewCopier.copy();
+    },
+
+    /**
+     * Copies a UI Action from the source scope to the target scope.
+     * Includes any related UI Action Visibility (sys_ui_action_view) record.
+     * @param {string} uiActionSysId 
+     */
+    copyUiAction: function(uiActionSysId) {
+        var source = new GlideRecord('sys_ui_action');
+        if (!source.get(uiActionSysId)) {
+            throw 'Source UI action not found';
+        }
+
+        var elementNames = global.KLF_Scoper.getNonSysFields(source);
+
+        var target = new GlideRecord('sys_ui_action');
+        target.newRecord();
+
+        for (var i = 0; i < elementNames.length; i++) {
+            var fieldName = elementNames[i];
+            target.setValue(fieldName, source.getValue(fieldName));
+        }
+
+        // Update the scope
+        target.setValue('sys_scope', this.targetScopeSysId);
+
+        // Update the table name
+        target.setValue('table', this.updateTableNames(source.getValue('table')));
+
+        // Update the script field
+        target.setValue('script', this.updateTableNames(source.getValue('script')));
+
+        // Add any related UI Action Visibility records
+        var uiActionVisibilityGr = new GlideRecord('sys_ui_action_view');
+        uiActionVisibilityGr.addQuery('sys_ui_action', uiActionSysId);
+        uiActionVisibilityGr.query();
+        while (uiActionVisibilityGr.next()) {
+            var targetVisibility = new GlideRecord('sys_ui_action_view');
+            // Check if the target visibility record already exists
+            targetVisibility.addQuery('sys_ui_action', target.getUniqueValue());
+            targetVisibility.addQuery('sys_ui_view', uiActionVisibilityGr.getValue('sys_ui_view'));
+            targetVisibility.query();
+            if (!targetVisibility.next()) {
+                // Doesn't exist, so create a new record
+                targetVisibility.newRecord();
+            }
+
+            targetVisibility.sys_ui_action = target.getUniqueValue();
+            targetVisibility.sys_ui_view = uiActionVisibilityGr.getValue('sys_ui_view');
+            targetVisibility.visibility = uiActionVisibilityGr.getValue('visibility');
+            targetVisibility.setValue('sys_scope', this.targetScopeSysId);
+            targetVisibility.update();
+        }
+
+        if (target.update()) {
+            return target;
+        } else {
+            throw 'Failed to copy UI action';
+        }
+    },
+
+    /**
+     * Copies a business rule from the source scope to the target scope.
+     * @param {string} businessRuleSysId 
+     * @returns {GlideRecord?} the target business rule
+     */
+    copyBusinessRule: function(businessRuleSysId) {
+        var source = new GlideRecord('sys_script');
+        if (!source.get(businessRuleSysId)) {
+            return null;
+        }
+        var elementNames = global.KLF_Scoper.getNonSysFields(source);
+
+        // Now that we have the element names, we can copy the business rule
+        var target = new GlideRecord('sys_script');
+        target.newRecord();
+
+        for (var i = 0; i < elementNames.length; i++) {
+            var fieldName = elementNames[i];
+            target.setValue(fieldName, source.getValue(fieldName));
+        }
+
+        // Update the table name
+        target.setValue('collection', this.updateTableNames(source.getValue('collection')));
+
+        // Update script field
+        target.setValue('script', this.updateTableNames(source.getValue('script')));
+
+        // Set the scope to the target scope
+        target.setValue('sys_scope', this.targetScopeSysId);
+
+        if (target.update()) {
+            return target;
+        } else {
+            throw 'Failed to copy business rule';
+        }
+    },
+
+    /**
+     * Copies a script include from the source scope to the target scope.
+     * @param {string} scriptIncludeSysId 
+     */
+    copyScriptInclude: function(scriptIncludeSysId) {
+        var source = new GlideRecord('sys_script_include');
+        if (!source.get(scriptIncludeSysId)) {
+            throw 'Source script include not found';
+        }
+
+        var elementNames = global.KLF_Scoper.getNonSysFields(source);
+
+        // Now that we have the element names, we can copy the business rule
+        var target = new GlideRecord('sys_script_include');
+        target.newRecord();
+
+        for (var i = 0; i < elementNames.length; i++) {
+            var fieldName = elementNames[i];
+            if (fieldName === 'api_name') {
+                continue;
+            }
+            target.setValue(fieldName, source.getValue(fieldName));
+        }
+
+        // Update the script field
+        target.setValue('script', this.updateTableNames(source.getValue('script')));
+
+        // Update the scope
+        target.setValue('sys_scope', this.targetScopeSysId);
+
+        if (target.update()) {
+            return target;
+        } else {
+            throw 'Failed to copy script include';
+        }
+    },
+
+    /**
+     * Copies a column from the source table to the target table.
+     * @param {string} sysDictionarySysId
+     * @param {string} targetTableName
+     * @returns {GlideRecord?} the sys_dictionary record of the target table
+     */
+    copyColumn: function(sysDictionarySysId, targetTableName) {
+        var source = new GlideRecord('sys_dictionary');
+        if (!source.get(sysDictionarySysId)) {
+            throw 'Source column not found';
+        }
+
+        // Check if the target table exists
+        if (!new GlideRecord(targetTableName).isValid()) {
+            throw 'Target table not found';
+        }
+
+        var target = new GlideRecord('sys_dictionary');
+        target.newRecord();
+
+        // Copy all non-system fields
+        var elementNames = global.KLF_Scoper.getNonSysFields(source);
+        elementNames.forEach(function(fieldName) {
+            target.setValue(fieldName, source.getValue(fieldName));
+        });
+
+        // Update the scope and table name
+        target.setValue('sys_scope', this.targetScopeSysId);
+        target.setValue('name', targetTableName);
+
+        if (target.update()) {
+            return target;
+        } else {
+            throw 'Failed to copy column';
+        }
+    },
+
+    copySPWidget: function() {
+
+    },
+
+    copySPWidgetInstance: function() {},
+
+    copySPPage: function() {
+
+    },
+
+    copySPPortal: function() {
+
+    },
+
+    copyReport: function() {
+
+    },
+
+    /**
+     * @param {string} uiPageSysId 
+     */
+    copyUiPage: function(uiPageSysId) {},
+
+    /**
+     * Updates the table names found in the string using the table map.
+     * 
+     * @param {string} string 
+     * @returns {string}
+     */
+    updateTableNames: function(string) {
+        if (!string) {
+            return string;
+        }
+
+        for (var sourceTableName in this.tableMap) {
+            var targetTableName = this.tableMap[sourceTableName];
+            string = string.replace(new RegExp(sourceTableName, 'g'), targetTableName);
+        }
+        return string;
+    },
+
+
+    /**
+     * Retrieves the sys_id of a scope by its name.
+     * @param {string} scopeName - The name of the scope to look up.
+     * @returns {string|null} The sys_id of the scope if found, null otherwise.
+     */
+    getScopeSysId: function(scopeName) {
+        var scopeGr = new GlideRecord('sys_scope');
+        if (scopeGr.get('scope', scopeName)) {
+            return scopeGr.getUniqueValue();
+        }
+        // Could be global scope. Need to check by name
+        var globalScope = new GlideRecord('sys_scope');
+        globalScope.addQuery('name', scopeName);
+        globalScope.query();
+        if (globalScope.getRowCount() === 1) {
+            globalScope.next();
+            return globalScope.getUniqueValue();
+        } else if (globalScope.getRowCount() > 1) {
+            throw 'Ambiguous scope name. More than one scope found with the name: ' + scopeName;
+        }
+
+        return null;
+    },
+};
+var global = global || {};
+/**
+ * Object used to copy application elements from one scope to another.
+ * This is useful when you want to duplicate a scoped application to a new scope.
+ * Without this object copying the application elements by hand would be a manual and error prone process.
+ * 
+ * TODO:
+ * - Add a way to find scripts that need to have "global" prefix to applied to objects. If the global
+ * prefix is not applied the object will not be referenced correctly when the script is scoped.
+ * - Log statements in script includes may need to be updated to use gs.info instead of gs.log because
+ * gs.log is not available in scoped scripts.
+ * 
+ * When copying artifacts the scope name will be updated. Table names will be updated based on the provided table map. Sometimes artifacts will have references
+ * to other artifacts. When that is the case the metadata map will update the sys_ids for those references.
+ * 
+ * The following ServiceNow objects can be copied:
+ * - Script Include (sys_script_include)
+ * - Business Rule (sys_script)
+ * - UI Action (sys_ui_action)
+ * - UI View (sys_ui_view)
+ * - UI Form (sys_ui_form)
+ * - UI Form Section (sys_ui_section)
+ * - UI List (sys_ui_list)
+ * - UI Related List (sys_ui_related_list)
+ * - Relationship (sys_relationship)
+ * - Column (sys_ui_column)
+ * 
+ * - System Property (sys_properties)
+ * - Report (sys_report)
+ * - UI Page (sys_ui_page)
+ * - UI Policy (sys_ui_policy)
+ * - UI Script (sys_ui_script)
+ * - Client Script (sys_client_script)
+ * - REST Message (sys_rest_message)
+ * - Reponsive Dashboard
+ */
+
+/**
+ * @typedef {Object} KLF_ScoperUtilsConfig
+ * @property {string} sourceScope - The scope of the source records.
+ * @property {string} targetScope - The scope of the target records.
+ * @property {{[sourceTableName: string]: string}} [tableMap] - A map of source table names to target table names.
+ * @property {{[sourceMetadataSysId: string]: string}} [metadataMap] - A map of source metadata sys_ids to target metadata sys_ids. 
+ */
+
+/**
+ * @param {KLF_ScoperUtilsConfig} config 
+ * @example
+ * var scoper = new global.KLF_ScoperUtils({
+ *     sourceScope: 'x_53417_scoper_1',
+ *     targetScope: 'x_53417_scoper_2',
+ *     tableMap: {
+ *         'x_53417_scoper_1_scoper_task': 'x_53417_scoper_2_scoper_task'
+ *     }
+ * });
+ * 
+ * // Copy a business rule
+ * var targetBusinessRule = scoper.copyBusinessRule('e509c3784764561058ceeb02d16d4399');
+ * 
+ * // Copy a script include
+ * var targetScriptInclude = scoper.copyScriptInclude('e509c3784764561058ceeb02d16d4399');
+ * 
+ * // Copy a column
+ * var targetColumn = scoper.copyColumn('e509c3784764561058ceeb02d16d4399', 'x_53417_scoper_2_scoper_task');
+ */
+global.KLF_ScoperUtils = function(config) {
+    var _config = config || {};
+    var sourceScopeSysId = this.getScopeSysId(_config.sourceScope);
+    if (!sourceScopeSysId) {
+        throw 'Source scope not found';
+    }
+
+    var targetScopeSysId = this.getScopeSysId(_config.targetScope);
+    if (!targetScopeSysId) {
+        throw 'Target scope not found';
+    }
+
+    this.sourceScope = _config.sourceScope;
+    this.sourceScopeSysId = sourceScopeSysId;
+    this.targetScope = _config.targetScope;
+    this.targetScopeSysId = targetScopeSysId;
+    this.tableMap = _config.tableMap || {};
+    this.checkTableMap();
+
+    // Map of source metadata sys_id to target metadata sys_id
+    if (_config.metadataMap) {
+        this.metadataMap = _config.metadataMap;
+    } else {
+        // Load the metadata map from the database
+        var metadataMapJson = this.getSysProperty('KLF_ScoperUtils.metadata_map');
+        this.metadataMap = metadataMapJson ? JSON.parse(metadataMapJson) : {};
+    }
+};
+
+/**
+ * @typedef {Object} KLF_ScoperUtilsMetadataResult
+ * @property {Document} targetRecordDocument
+ * @property {string} targetRecordSysId
+ */
+
+global.KLF_ScoperUtils.prototype = {
+    /**
+     * Checks the table map to make sure that all the source table names are valid.
+     * Throws an error if any of the source table names are not found.
+     */
+    checkTableMap: function() {
+        var me = this;
+        Object.keys(this.tableMap).forEach(function(sourceTableName) {
+            var source = new GlideRecord(sourceTableName);
+            if (!source.isValid()) {
+                throw 'Source table not found for ' + sourceTableName;
+            }
+        });
+    },
+
+    /**
+     * Generates a new metadata XML string using the source metadata record and the target scope.
+     * The new metadata XML that is returned can be used to create a new artifact in the target scope.
+     * @param {GlideRecord} source sys_metadata.sys_id
+     * @returns {{targetRecordXml: string, targetRecordSysId: string}}
+     */
+    createTargetMetadataFromSourceMetadata: function(source) {
+        if (!source.isValid() || !source.isValidRecord()) {
+            throw 'Source metadata is not valid';
+        }
+
+        // I need to get the actual record from the source metadata record
+        // The sys_metadata record will not give me access to all the fields
+        var _source = new GlideRecord(source.getRecordClassName());
+        if (!_source.get(source.getUniqueValue())) {
+            throw 'Source metadata not found';
+        }
+
+        var type = _source.getRecordClassName();
+        var targetParts;
+        switch (type) {
+            case 'sys_ui_policy_action':
+                targetParts = this.createUiPolicyActionTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_action_view':
+                targetParts = this.createUiActionVisibilityTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_view':
+                targetParts = this.createUiViewTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_list':
+                targetParts = this.createUiListTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_related_list':
+                targetParts = this.createUiRelatedListTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_section':
+                targetParts = this.createUiSectionTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_ui_form':
+                targetParts = this.createUiFormTargetMetadataFromSourceMetadata(_source);
+                break;
+            case 'sys_user_role':
+                targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(_source);
+                break;
+            default:
+                targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(_source);
+        }
+
+        return {
+            targetRecordXml: this.getUpdatedXml(targetParts.targetRecordDocument),
+            targetRecordSysId: targetParts.targetRecordSysId
+        };
+    },
+
+    /**
+     * Updates the document so all the references and table names that were in the source document
+     * are updated to the target scope. Returns the updated XML.
+     * @param {Document} document 
+     * @returns {string} The updated XML
+     */
+    getUpdatedXml: function(document) {
+        var xml = this.documentToString(document, true);
+        xml = this.updateTableNames(xml);
+        xml = this.updateReferences(xml);
+        xml = this.updateScope(xml);
+        if (xml.indexOf(this.sourceScope) > -1) {
+            var error = 'KLF_ScoperUtils.getUpdatedXml() - Source scope still exists in target XML even after XML update\n\n' + xml;
+            throw error;
+        }
+        return xml;
+    },
+
+    /**
+     * Creates XML for the target UI Section record
+     * @param {GlideRecord} source sys_ui_form record
+     */
+    createUiFormTargetMetadataFromSourceMetadata: function(source) {
+        var targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(source);
+        var targetDocument = targetParts.targetRecordDocument;
+
+        // Get the related UI Form Sections
+        var uiFormSectionGr = new GlideRecord('sys_ui_form_section');
+        uiFormSectionGr.addQuery('sys_ui_form', source.getUniqueValue());
+        uiFormSectionGr.orderBy('position');
+        uiFormSectionGr.query();
+        while (uiFormSectionGr.next()) {
+            this.defaultCreateTargetMetadataFromSourceMetadata(uiFormSectionGr, null, targetDocument);
+            // The form section will have a reference to the UI Section
+            if (!uiFormSectionGr.sys_ui_section.nil()) {
+                if (!this.isProcessed(uiFormSectionGr.getValue('sys_ui_section'))) {
+                    var uiSection = uiFormSectionGr.sys_ui_section.getRefRecord();
+                    this.createUiSectionTargetMetadataFromSourceMetadata(uiSection, targetDocument);
+                }
+            }
+        }
+
+        return targetParts;
+    },
+
+    /**
+     * Creates XML for the target UI Section record
+     * @param {GlideRecord} source sys_ui_section record
+     * @param {Document} [providedDocument]
+     */
+    createUiSectionTargetMetadataFromSourceMetadata: function(source, providedDocument) {
+        var targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(source, null, providedDocument);
+        var targetDocument = targetParts.targetRecordDocument;
+
+        // Get the related UI Elements
+        var uiElementGr = new GlideRecord('sys_ui_element');
+        uiElementGr.addQuery('sys_ui_section', source.getUniqueValue());
+        uiElementGr.orderBy('position');
+        uiElementGr.query();
+        while (uiElementGr.next()) {
+            this.defaultCreateTargetMetadataFromSourceMetadata(uiElementGr, null, targetDocument);
+        }
+
+        return targetParts;
+    },
+
+    /**
+     * Creates XML for the target UI Related List record
+     * - sys_ui_related_list is a container for the set of related lists that are displayed on a form.
+     * - sys_ui_related_list_entry defines the specific related list that is displayed. It serves as a pointer
+     * to either a ${table}.${field} or a defined relationship in the format of REL:${sys_relationship.sys_id}.  
+     * For example:
+     *   - REL:d559ab8b87a89290e2041f8d3fbb35c4 // For a relationship
+     *   - x_53417_scoper_1_scoper_task.parent // For a related list that points to the task table using the parent field
+     * @param {GlideRecord} source sys_ui_related_list record
+     */
+    createUiRelatedListTargetMetadataFromSourceMetadata: function(source) {
+        var targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(source);
+        var targetDocument = targetParts.targetRecordDocument;
+
+        // Get the related list elements
+        var listElementGr = new GlideRecord('sys_ui_related_list_entry');
+        listElementGr.addQuery('list_id', source.getUniqueValue());
+        listElementGr.query();
+        while (listElementGr.next()) {
+            // If the related list entry is pointing to a relationship, then I need to update the sys_id
+            // The relationship sys_id is in the format of REL:${sys_relationship.sys_id}
+            if (listElementGr.getValue('related_list').startsWith('REL:')) {
+                var relatedListValue = listElementGr.getValue('related_list');
+                var relatedListParts = relatedListValue.split(':');
+                var relationshipSysId = relatedListParts[1];
+                if (relationshipSysId) {
+                    listElementGr.setValue('related_list', 'REL:' + this.getOrGenerateGUID(relationshipSysId));
+                }
+            }
+
+            this.defaultCreateTargetMetadataFromSourceMetadata(listElementGr, null, targetDocument);
+        }
+
+        return targetParts;
+    },
+
+    /**
+     * Creates XML for the target UI List record
+     * @param {GlideRecord} source sys_ui_list record
+     */
+    createUiListTargetMetadataFromSourceMetadata: function(source) {
+        var targetParts = this.defaultCreateTargetMetadataFromSourceMetadata(source);
+        var targetDocument = targetParts.targetRecordDocument;
+
+        // Get the related list elements
+        var listElementGr = new GlideRecord('sys_ui_list_element');
+        listElementGr.addQuery('list_id', source.getUniqueValue());
+        listElementGr.query();
+        while (listElementGr.next()) {
+            this.defaultCreateTargetMetadataFromSourceMetadata(listElementGr, null, targetDocument);
+        }
+
+        return targetParts;
+    },
+
+    /**
+     * Creates XML for the target UI Policy Action record
+     * @param {GlideRecord} source sys_ui_policy_action record
+     */
+    createUiPolicyActionTargetMetadataFromSourceMetadata: function(source) {
+        // UI Policy Action has to point to the correct UI Policy record
+        if (!source.ui_policy.nil()) {
+            var sysId = source.getValue('ui_policy');
+            source.ui_policy = this.getOrGenerateGUID(sysId);
+        }
+        return this.defaultCreateTargetMetadataFromSourceMetadata(source);
+    },
+
+    /**
+     * Creates XML for the target UI Action Visibility record
+     * @param {GlideRecord} source sys_ui_action_view record
+     */
+    createUiActionVisibilityTargetMetadataFromSourceMetadata: function(source) {
+        // UI Action Visibility has to point to the correct UI Action record
+        if (!source.sys_ui_action.nil()) {
+            var sysId = source.getValue('sys_ui_action');
+            source.sys_ui_action = this.getOrGenerateGUID(sysId);
+        }
+
+        return this.defaultCreateTargetMetadataFromSourceMetadata(source);
+    },
+
+    /**
+     * 
+     * @param {GlideRecord} source sys_metadata record
+     * @param {string?} [targetRecordSysId] 
+     * @param {Document} [providedDocument]
+     * @returns {KLF_ScoperUtilsMetadataResult}
+     */
+    defaultCreateTargetMetadataFromSourceMetadata: function(source, targetRecordSysId, providedDocument) {
+        var _targetRecordSysId = targetRecordSysId || this.getOrGenerateGUID(source.getUniqueValue());
+        if (source.isValidField('sys_scope')) {
+            source.sys_scope = this.targetScopeSysId;
+        }
+        if (source.isValidField('sys_package')) {
+            source.sys_package = this.targetScopeSysId;
+        }
+        if (source.isValidField('sys_id')) {
+            source.sys_id = _targetRecordSysId;
+        }
+
+        var document = providedDocument ? providedDocument : this.createUnloadDocument();
+
+        this.unloadRecord(source, document);
+
+        return {
+            targetRecordDocument: document,
+            targetRecordSysId: _targetRecordSysId
+        };
+    },
+
+    /**
+     * Copies the data from the source scope to the target scope.
+     * @param {GlideRecord} source 
+     * @param {string?} [targetRecordSysId] 
+     * @param {Document} [providedDocument]
+     * @returns {KLF_ScoperUtilsMetadataResult}
+     */
+    copyData: function(source, targetRecordSysId, providedDocument) {
+        return this.defaultCreateTargetMetadataFromSourceMetadata(source, targetRecordSysId, providedDocument);
+    },
+
+    /**
+     * @overload
+     * @param {string} sysId 
+     * @returns {GlideRecord} 
+     */
+    /**
+     * @overload
+     * @param {string} sysId 
+     * @param {boolean} quiet
+     * @returns {GlideRecord?}
+     */
+    /**
+     * Copies the metadata from the source scope to the target scope.
+     * @param {string} sysId 
+     * @param {boolean} [quiet] - If true, then do not throw an error if the metadata cannot be copied
+     * @returns {GlideRecord?} The target metadata record or null if quiet is true and the metadata cannot be copied
+     */
+    copyMetadataBySysId: function(sysId, quiet) {
+        if (this.isProcessed(sysId)) {
+            var processedMetadata = new GlideRecord('sys_metadata');
+            if (processedMetadata.get(this.metadataMap[sysId])) {
+                return processedMetadata;
+            } else {
+                throw 'Target metadata not found for sourcesys_id: ' + sysId;
+            }
+        }
+
+        var metadata = new GlideRecord('sys_metadata');
+        if (!metadata.get(sysId)) {
+            throw 'Source metadata not found for sys_id: ' + sysId;
+        }
+
+        // Check to see if we can copy this type of metadata
+        if (!this.canCopyMetadata(metadata)) {
+            var error = 'Cannot copy metadata for source sys_id: ' + sysId + ' of type: ' + metadata.getRecordClassName();
+            if (!quiet) {
+                throw error;
+            } else {
+                gs.error(error);
+                return null;
+            }
+        }
+
+        if (metadata.getRecordClassName() === 'sys_documentation') {
+            // Check if the sys_documentation already exists in the target scope
+            var source = new GlideRecord('sys_documentation');
+            if (source.get(sysId)) {
+                var target = new GlideRecord('sys_documentation');
+                target.addQuery('name', source.getValue('name'));
+                target.addQuery('element', source.getValue('element'));
+                target.addQuery('language', source.getValue('language'));
+                target.query();
+                if (target.next()) {
+                    // We need to make sure the sys_id in the metadata map is the target sys_id we found
+                    this.metadataMap[sysId] = target.getUniqueValue();
+                    // Mark this as copied
+                    this.markRecordAsCopied(sysId, target.getUniqueValue());
+                    return target;
+                }
+            }
+        }
+
+        var targetParts = this.createTargetMetadataFromSourceMetadata(metadata);
+        var metadataXml = targetParts.targetRecordXml;
+        var targetRecordSysId = targetParts.targetRecordSysId;
+
+        // Try to load the metadata into the target scope
+        // @ts-ignore
+        var updateManager = new global.GlideUpdateManager2();
+        updateManager.loadXML(metadataXml);
+
+        // Check if the metadata was loaded successfully
+        var targetMetadata = new GlideRecord(metadata.getRecordClassName());
+        if (!targetMetadata.get(targetRecordSysId)) {
+            throw 'Target metadata not found for target sys_id: ' + targetRecordSysId + ' source sys_id: ' + sysId + ' of type: ' + metadata.getRecordClassName();
+        }
+
+        // For now we are going to track what records are copied
+        this.markRecordAsCopied(sysId, targetRecordSysId);
+
+        return targetMetadata;
+    },
+
+    /**
+     * Checks to see if we can copy this type of metadata
+     * @param {GlideRecord} metadata 
+     * @returns {boolean}
+     */
+    canCopyMetadata: function(metadata) {
+        var recordClassName = metadata.getRecordClassName();
+        /** @type {string[]} */
+        var blackList = ['sys_scope_privilege', 'ua_table_licensing_config'];
+
+        if (blackList.indexOf(recordClassName) > -1) {
+            return false;
+        }
+
+        // We aren't going to attempt to copy persononalized views. The personalized views
+        // are customizations users have made to specific forms and lists.
+        // This would include:
+        // - sys_ui_form
+        // - sys_ui_section
+        // - sys_ui_list
+        // - sys_ui_related_list
+        var viewTableNames = ['sys_ui_form', 'sys_ui_section', 'sys_ui_list', 'sys_ui_related_list'];
+        if (viewTableNames.indexOf(recordClassName) > -1) {
+            // If the view is personalized it will have a value in the sys_user field
+            var viewGr = new GlideRecord(recordClassName);
+            viewGr.get(metadata.getUniqueValue());
+            return viewGr.sys_user.nil();
+        }
+
+        return true;
+    },
+
+    /**
+     * Marks a record as copied.
+     * @param {string} sourceSysId 
+     * @param {string} targetSysId 
+     */
+    markRecordAsCopied: function(sourceSysId, targetSysId) {
+        // Working through the GlideRecord API because it's quicker than using gs.getProperty / gs.setProperty
+        var processedRecords = this.getSysProperty('KLF_ScoperUtils.processed_records') ? JSON.parse(this.getSysProperty('KLF_ScoperUtils.processed_records')) : {};
+        processedRecords[sourceSysId] = targetSysId;
+        this.setSysProperty('KLF_ScoperUtils.processed_records', JSON.stringify(processedRecords, null, 4));
+
+        this.metadataMap[sourceSysId] = targetSysId;
+        this.setSysProperty('KLF_ScoperUtils.metadata_map', JSON.stringify(this.metadataMap, null, 4));
+    },
+
+    /**
+     * Returns true if the record has been processed.
+     * @param {string} sourceSysId 
+     */
+    isProcessed: function(sourceSysId) {
+        var processedRecords = JSON.parse(this.getSysProperty('KLF_ScoperUtils.processed_records') || '{}');
+        return processedRecords[sourceSysId] ? true : false;
+    },
+
+    /**
+     * Copies a UI View from the source scope to the target scope.
+     * @param {GlideRecord} source 
+     * @returns {KLF_ScoperUtilsMetadataResult}
+     */
+    createUiViewTargetMetadataFromSourceMetadata: function(source) {
+        // First check to make sure the view is in the source scope
+        if (source.getValue('sys_scope') !== this.sourceScopeSysId) {
+            throw 'View must be in source scope to be copied to target scope';
+        }
+
+        // For sys_ui_view records the sys_id will not change. The existing record will be
+        // overwritten by the new record. So we don't need to generate a new GUID.
+        return this.defaultCreateTargetMetadataFromSourceMetadata(source, source.getUniqueValue());
+    },
+
+    /**
+     * Updates the scope found in the string using the source scope.
+     * @param {string} string 
+     * @returns {string}
+     */
+    updateScope: function(string) {
+        return string.replace(new RegExp(this.sourceScope, 'g'), this.targetScope);
+    },
+
+    /**
+     * Updates the table names found in the string using the table map.
+     * 
+     * @param {string} string 
+     * @returns {string}
+     */
+    updateTableNames: function(string) {
+        if (!string) {
+            return string;
+        }
+
+        for (var sourceTableName in this.tableMap) {
+            var targetTableName = this.tableMap[sourceTableName];
+            string = string.replace(new RegExp(sourceTableName, 'g'), targetTableName);
+        }
+        return string;
+    },
+
+
+    /**
+     * Retrieves the sys_id of a scope by its name.
+     * @param {string} scopeName - The name of the scope to look up.
+     * @returns {string|null} The sys_id of the scope if found, null otherwise.
+     */
+    getScopeSysId: function(scopeName) {
+        var scopeGr = new GlideRecord('sys_scope');
+        if (scopeGr.get('scope', scopeName)) {
+            return scopeGr.getUniqueValue();
+        }
+        // Could be global scope. Need to check by name
+        var globalScope = new GlideRecord('sys_scope');
+        globalScope.addQuery('name', scopeName);
+        globalScope.query();
+        if (globalScope.getRowCount() === 1) {
+            globalScope.next();
+            return globalScope.getUniqueValue();
+        } else if (globalScope.getRowCount() > 1) {
+            throw 'Ambiguous scope name. More than one scope found with the name: ' + scopeName;
+        }
+
+        return null;
+    },
+
+    /**
+     * Creates a document object that can be passed to {@link global.KLF_RecordSync.unloadRecord}
+     * This is useful when you want to add multiple unloaded records to the same document
+     * @returns {Document}
+     */
+    createUnloadDocument: function() {
+        // @ts-ignore
+        var document = global.GlideXMLUtil.newDocument('unload');
+        var date = new GlideDateTime();
+        document.documentElement.setAttribute('unload_date', date.toString());
+        return document;
+    },
+
+    /**
+     * Generates XML from GlideRecord that is like the XML generated by exporting a record from ServiceNow.
+     * This XML can be used to import a record into ServiceNow.
+     * @param {GlideRecord} glideRecord 
+     * @param {Document} [document]
+     * @returns {Document}
+     */
+    unloadRecord: function(glideRecord, document) {
+        // I'm going to write to this glideRecord so I don't want something downstream
+        // to write to the database so I'm disabling write operations just in case
+        // something downstream tries to write
+        glideRecord.setAbortAction(true);
+
+        // @ts-ignore
+        var _document = document || global.GlideXMLUtil.newDocument('unload');
+        if (!document) {
+            // If the document was not passed in, then add the unload_date attribute
+            var date = new GlideDateTime();
+            _document.documentElement.setAttribute('unload_date', date.toString());
+        }
+
+        // If this is an extended table then I need the true record and not the base record
+        // If I detect this isn't the extended record I query for the extended record
+        if (glideRecord.getTableName() != glideRecord.getRecordClassName()) {
+            var extended = new GlideRecord(glideRecord.getRecordClassName());
+            extended.get(glideRecord.getUniqueValue());
+            // @ts-ignore
+            new global.GlideUnloader().unloadGlideRecord(_document, extended, 'INSERT_OR_UPDATE');
+        } else {
+            // @ts-ignore
+            new global.GlideUnloader().unloadGlideRecord(_document, glideRecord, 'INSERT_OR_UPDATE');
+        }
+
+        return _document;
+    },
+
+    /**
+     * Returns the XML representation of the Document
+     * @param {Document} document 
+     * @param {boolean} [prettyPrint]
+     * @returns {string}
+     */
+    documentToString: function(document, prettyPrint) {
+        if (prettyPrint) {
+            // @ts-ignore
+            return String(global.GlideXMLUtil.toIndentedString(document));
+        } else {
+            // @ts-ignore
+            return String(global.GlideXMLUtil.toString(document));
+        }
+    },
+
+    /**
+     * Updates the references in the metadata XML using the metadata map
+     * @param {string} xml 
+     */
+    updateReferences: function(xml) {
+        for (var sourceSysId in this.metadataMap) {
+            var targetSysId = this.metadataMap[sourceSysId];
+            xml = xml.replace(new RegExp(sourceSysId, 'g'), targetSysId);
+        }
+        return xml;
+    },
+    /**
+     * Generates a GUID for a source metadata record.
+     * This also adds the source sys_id and target sys_id to the metadata map. Everytime
+     * we generate a GUID we are tracking the relationship so this can be used later to update
+     * references the existing GUID was using. For example, when a target UI Policy get a new
+     * GUID, we need to update the target UI Policy Action records that were using the old GUID.
+     * @param {string} sourceSysId 
+     * @returns {string}
+     */
+    getOrGenerateGUID: function(sourceSysId) {
+        // If the metadata map already has the source sys_id, return the target sys_id
+        var guid = this.metadataMap[sourceSysId];
+        if (!guid) {
+            guid = gs.generateGUID();
+            this.metadataMap[sourceSysId] = guid;
+            // Save the metadata map
+            this.setSysProperty('KLF_ScoperUtils.metadata_map', JSON.stringify(this.metadataMap, null, 4));
+        }
+        return guid;
+    },
+
+    /**
+     * Retrieves the value of a system property. This is quicker than using gs.getProperty
+     * @param {string} name 
+     * @returns {string}
+     */
+    getSysProperty: function(name) {
+        var property = new GlideRecord('sys_properties');
+        if (property.get('name', name)) {
+            return property.getValue('value');
+        } else {
+            throw 'System property ' + name + ' not found';
+        }
+    },
+
+    /**
+     * Directly sets the value of a system property. This is quicker than using gs.setProperty
+     * @param {string} name 
+     * @param {string} value 
+     */
+    setSysProperty: function(name, value) {
+        var property = new GlideRecord('sys_properties');
+        if (!property.get('name', name)) {
+            throw 'System property ' + name + ' not found';
+        }
+        property.setValue('value', value);
+        property.setWorkflow(false);
+        property.autoSysFields(false);
+        property.update();
+    }
+};
+// @ts-nocheck
+/**
+ * @todo This object is broken right now. Remove the ts-nocheck and fix the issues.
+ */
+var global = global || {};
+
+/**
+ * Object that can be used to transfer data from one scope to another.
+ * @param {global.KLF_ScoperUtils} scoper 
+ */
+global.KLF_ScoperUtils_DataMigrator = function(scoper) {
+    this.scoper = scoper;
+};
+
+global.KLF_ScoperUtils_DataMigrator.prototype = {
+    /**
+     * Checks the table map to make sure that the source and target table name is valid.
+     * Throws an error if the source table name is not found.
+     * @param {string} tableName 
+     */
+    checkTable: function(tableName) {
+        var source = new GlideRecord(tableName);
+        if (!source.isValid()) {
+            throw 'Source table not found for ' + tableName;
+        }
+        var target = new GlideRecord(this.scoper.tableMap[tableName]);
+        if (!target.isValid()) {
+            throw 'Target table not found for ' + tableName;
+        }
+    },
+
+    /**
+     * Transfers all tables from the source scope to the target scope.
+     * @param {{tableName: string, encodedQueryString: string}[]} tables 
+     */
+    transferTables: function(tables) {
+        var me = this;
+        tables.forEach(function(table) {
+            me.transferTable(table.tableName, table.encodedQueryString);
+        });
+    },
+
+    /**
+     * Transfers a single record from the source scope to the target scope.
+     * @param {GlideRecord} source
+     */
+    transferRecord: function(source) {
+        // Check to make sure there is a target table
+        if (!this.scoper.tableMap[source.getRecordClassName()]) {
+            throw 'No target table found for ' + source.getRecordClassName();
+        }
+
+        this.checkTable(source.getRecordClassName());
+
+        var targetParts = this.scoper.copyData(source);
+        var updatedXml = this.scoper.getUpdatedXml(targetParts.targetRecordDocument);
+        // @ts-ignore
+        var updateManager = new global.GlideUpdateManager2();
+        updateManager.loadXML(updatedXml);
+
+    },
+
+    /**
+     * Transfers a table from the source scope to the target scope.
+     * @param {string} tableName 
+     * @param {string} [encodedQueryString]
+     */
+    transferTable: function(tableName, encodedQueryString) {
+        this.checkTable(tableName);
+        var source = new GlideRecord(tableName);
+        if (encodedQueryString) {
+            source.addEncodedQuery(encodedQueryString);
+        }
+        source.query();
+        while (source.next()) {
+            this.transferRecord(source);
+        }
+    },
+
+    /**
+     * Adds the record's related journal entries to the update set
+     * @param {GlideRecord} parent
+     * @param {Document} document
+     * @returns {global.KLF_RecordSync.Manifest}
+     */
+    addJournalEntries: function(parent, document) {
+        var manifest = new global.KLF_RecordSync.Manifest();
+
+        var journal = new GlideRecord("sys_journal_field");
+        // Intentionally using GlideRecord.getRecordClassName because it will correctly
+        // handle returning the correct table name when dealing with extended records
+        journal.addQuery("name", parent.getRecordClassName());
+        journal.addQuery("element_id", parent.getUniqueValue());
+        journal.query();
+        while (journal.next()) {
+            manifest.addRecordByGlideRecord(journal);
+            this.unloadRecord(journal, document);
+        }
+        return manifest;
+    },
+
+    /**
+     * Adds the record's related audit entries to the update set
+     * @param {GlideRecord} parent
+     * @param {Document} document
+     * @returns {global.KLF_RecordSync.Manifest}
+     */
+    addAuditEntries: function(parent, document) {
+        var manifest = new global.KLF_RecordSync.Manifest();
+
+        var audit = new GlideRecord("sys_audit");
+        // Intentionally using GlideRecord.getRecordClassName because it will correctly
+        // handle returning the correct table name when dealing with extended records
+        audit.addQuery("tablename", parent.getRecordClassName());
+        audit.addQuery("documentkey", parent.getUniqueValue());
+        audit.query();
+        while (audit.next()) {
+            manifest.addRecordByGlideRecord(audit);
+            this.unloadRecord(audit, document);
+        }
+        return manifest;
+    },
+
+    /**
+     * Adds the record's related currency entries to the update set
+     * @param {GlideRecord} parent
+     * @param {Document} document
+     * @returns {global.KLF_RecordSync.Manifest}
+     */
+    addCurrencyEntries: function(parent, document) {
+        var manifest = new global.KLF_RecordSync.Manifest();
+
+        var currency = new GlideRecord("fx_currency_instance");
+        // Intentionally using GlideRecord.getRecordClassName because it will correctly
+        // handle returning the correct table name when dealing with extended records
+        currency.addQuery("table", parent.getRecordClassName());
+        currency.addQuery("id", parent.getUniqueValue());
+        currency.query();
+        while (currency.next()) {
+            manifest.addRecordByGlideRecord(currency);
+            this.unloadRecord(currency, document);
+        }
+        return manifest;
+    },
+
+    /**
+     * Adds the record's related currency entries to the update set
+     * @param {GlideRecord} parent
+     * @param {Document} document
+     * @returns {global.KLF_RecordSync.Manifest}
+     */
+    addPriceEntries: function(parent, document) {
+        var manifest = new global.KLF_RecordSync.Manifest();
+
+        var price = new GlideRecord("fx_price");
+        // Intentionally using GlideRecord.getRecordClassName because it will correctly
+        // handle returning the correct table name when dealing with extended records
+        price.addQuery("table", parent.getRecordClassName());
+        price.addQuery("id", parent.getUniqueValue());
+        price.query();
+        while (price.next()) {
+            manifest.addRecordByGlideRecord(price);
+            this.unloadRecord(price, document);
+        }
+        return manifest;
     },
 };
 /**
@@ -5444,11 +7433,1214 @@ global.KLF_SPUtils = KLF_SPUtils;
  */
 var global = global || {};
 
+/**
+ * @param {string} targetScope 
+ */
 global.KLF_TableScoper = function(targetScope) {
     this.targetScope = targetScope;
 };
 
 global.KLF_TableScoper.prototype = {};
+/**
+ * Used to validate the table and column names between two tables.
+ * 
+ * The following things are validated:
+ * 
+ * TABLE:
+ * - table sys_db_object
+ * - table sys_dictionary collection record
+ * - sys_number entry if the table has automatic numbering
+ * - sys_number_counter. if the table has automatic numbering sys_number_counter must be set to a higher value than the source table.
+ * 
+ * TABLE FIELDS:
+ * - sys_dictionary entry for the field
+ * - sys_documentation entry for the field. This includes the label and help text
+ * - sys_choice entry for the field if it is a choice field
+ * - sys_dictionary.attributes entry for the field
+ * - sys_dictionary_override entry for the field
+ * 
+ * @example
+ * // Assign a local reference to the validator
+ * var validator = KLF_TableValidator.TableValidator; 
+ * 
+ * // Set to true to disable debug logging. You can set this to false to see greater detail.
+ * KLF_TableValidator.quiet = true; 
+ * 
+ * // Validate the table and column names between two tables. First argument is the source table, second argument is the target table.
+ * // This will validate the table has been scoped properly and log the results to the system log.
+ * // The log uses "KLF_TableValidator" as the source.
+ * validator.validateAndLogResults('u_klf_test_task', 'x_53417_klf_test_test_task');
+ */
+
+/** 
+ * The keys are either a table name or a field name with the table name as a prefix.
+ * The values are an array of error messages for that field or table.
+ * @typedef {{
+ *   title:string,
+ *   columnNameResult: string,
+ *   results: {[fieldOrTable:string]:string[]}
+ * }} KLF_ValidationReport
+ */
+
+/**
+ * @typedef {{name:string,tableName:string,type:string}} KLF_ColumnValidator_Field
+ */
+
+/**
+ * @typedef {{sourceField:KLF_ColumnValidator_Field,targetField:KLF_ColumnValidator_Field}} KLF_ColumnValidator_Pair
+ */
+
+/**
+ * Object to validate the table and column names between two tables.
+ */
+var KLF_TableValidator = (function() {
+
+    var BULLET = '\u2022 ';
+    var CHECKMARK = '\u2713 ';
+    var XMARK = '\u2717 ';
+
+    var FLDS = {
+        SYS_CHOICE: [
+            'dependent_value',
+            'element',
+            'hint',
+            'inactive',
+            'label',
+            'language',
+            'sequence',
+            'synonyms',
+            'value'
+        ],
+
+        SYS_DB_OBJECT: [
+            'access',
+            'actions_access',
+            'alter_access',
+            'caller_access',
+            'client_scripts_access',
+            'configuration_access',
+            'create_access',
+            'delete_access',
+            'extension_model',
+            'is_extendable',
+            'label',
+            'live_feed_enabled',
+            'provider_class',
+            'read_access',
+            'scriptable_table',
+            'super_class',
+            'update_access',
+            'ws_access'
+        ],
+
+        SYS_DICTIONARY: [
+            'active',
+            'array',
+            'array_denormalized',
+            'audit',
+            'choice',
+            'choice_field',
+            'choice_table',
+            'column_label',
+            'comments',
+            'create_roles',
+            'defaultsort',
+            'default_value',
+            'delete_roles',
+            'dependent',
+            'dependent_on_field',
+            'display',
+            'dynamic_creation',
+            'dynamic_creation_script',
+            'dynamic_default_value',
+            'dynamic_ref_qual',
+            'element',
+            'element_reference',
+            'foreign_database',
+            'function_definition',
+            'function_field',
+            'internal_type',
+            'mandatory',
+            'max_length',
+            'next_element',
+            'primary',
+            'read_only',
+            'read_roles',
+            'reference',
+            'reference_cascade_rule',
+            'reference_floats',
+            'reference_key',
+            'reference_qual',
+            'reference_qual_condition',
+            'reference_type',
+            'spell_check',
+            'staged',
+            'table_reference',
+            'text_index',
+            'unique',
+            'use_dependent_field',
+            'use_dynamic_default',
+            'use_reference_qualifier',
+            'widget',
+            'write_roles',
+            'xml_view'
+        ],
+
+        SYS_DICTIONARY_OVERRIDE: [
+            'attributes',
+            'attributes_override',
+            'base_table',
+            'calculation',
+            'calculation_override',
+            'default_value',
+            'default_value_override',
+            'dependent',
+            'dependent_override',
+            'display_override',
+            'element',
+            'mandatory',
+            'mandatory_override',
+            'read_only',
+            'read_only_override',
+            'reference_qual',
+            'reference_qual_override'
+        ],
+
+        SYS_DOCUMENTATION: [
+            'element',
+            'help',
+            'hint',
+            'label',
+            'language',
+            'plural',
+            'url',
+            'url_target'
+        ]
+    };
+
+    var logSource = 'KLF_TableValidator';
+    /**
+     * Info level logging
+     * @param {string} message
+     */
+    function logInfo(message) {
+        gs.log('INFO: ' + message, logSource);
+    }
+
+    /**
+     * Info error logging
+     * @param {string} message
+     */
+    function logError(message) {
+        gs.log('ERROR: ' + message, logSource);
+    }
+
+    /**
+     * Debug logging
+     * @param {string} message
+     */
+    function logDebug(message) {
+        if (!KLF_TableValidator.quiet) {
+            gs.log('DEBUG: ' + message, logSource);
+        }
+    }
+
+    /**
+     * @param {string} tableName
+     * @param {string} fieldName
+     * @returns {KLF_ColumnValidator_Field}
+     */
+    function getFieldForTable(tableName, fieldName) {
+        var fieldGR = new GlideRecord(tableName);
+        var element = fieldGR.getElement(fieldName);
+        var type = String(element.getED().getInternalType());
+        return {
+            name: String(element.getName()),
+            tableName: String(element.getTableName()),
+            type: type
+        };
+    }
+
+    /**
+     * @param {string} tableName
+     * @returns {KLF_ColumnValidator_Field[]}
+     */
+    function getFieldsForTable(tableName) {
+        var fields = [];
+        var fieldGR = new GlideRecord(tableName);
+        var elements = fieldGR.getElements();
+        // @ts-ignore
+        for (var i = 0; i < elements.size(); i++) {
+            // @ts-ignore
+            var element = elements.get(i);
+            var type = String(element.getED().getInternalType());
+            if (type === 'related_tags') {
+                continue;
+            }
+            fields.push({
+                name: String(element.getName()),
+                tableName: String(element.getTableName()),
+                type: type
+            });
+        }
+
+        fields.sort(function(f1, f2) {
+            return f1.name.localeCompare(f2.name);
+        });
+
+        return fields;
+    }
+
+    /**
+     * @param {KLF_ColumnValidator_Field} field 
+     * @returns {GlideRecord} sys_dictionary
+     */
+    function getDictionaryEntry(field) {
+        var dictionaryEntry = new GlideRecord('sys_dictionary');
+        dictionaryEntry.addQuery('name', field.tableName);
+        dictionaryEntry.addQuery('element', field.name);
+        dictionaryEntry.query();
+        if (dictionaryEntry.getRowCount() === 0) {
+            throw ('No dictionary entry found for field: ' + JSON.stringify(field));
+        }
+        if (dictionaryEntry.getRowCount() > 1) {
+            throw ('Multiple dictionary entries found for field: ' + JSON.stringify(field));
+        }
+        dictionaryEntry.next();
+        return dictionaryEntry;
+    }
+
+
+    /**
+     * Looks up the dictionary entries based on the fields list
+     * @param {KLF_ColumnValidator_Field[]} fields 
+     * @returns {GlideRecord[]} sys_dictionary[]
+     */
+    function getDictionaryEntries(fields) {
+        var dictionaryEntries = fields.map(function(field) {
+            return getDictionaryEntry(field);
+        });
+        return dictionaryEntries;
+    }
+    /**
+     * Validates the fields in a column are the same between two tables
+     */
+    var _KLF_ColumnValidator = (function() {
+
+
+        /**
+         * Validates the fields in a column are the same between two tables
+         * @param {string} sourceTable - The source table to validate
+         * @param {string} targetTable - The target table to validate
+         * @param {string} columnName - The column name to validate
+         * @returns {string[]} - An array of error messages
+         */
+        function validateColumn(sourceTable, targetTable, columnName) {
+            var sourceField = getFieldForTable(sourceTable, columnName);
+            var targetField = getFieldForTable(targetTable, columnName);
+
+            return validateColumnPair(sourceTable, targetTable, { sourceField: sourceField, targetField: targetField });
+        }
+
+        /**
+         * Compares the sys_dictionary.attributes field between two dictionary entries
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]}
+         */
+        function validateAttributes(sourceDictionaryEntry, targetDictionaryEntry) {
+            var excludedAttributes = ['edge_encryption_enabled'];
+            /**
+             * Attributes will look like this:
+             * ref_ac_columns=user_name;first_name;last_name,ref_ac_columns_search=true 
+             * 
+             * They get converted to a map like this:
+             * {
+             *   ref_ac_columns: 'user_name;first_name;last_name',
+             *   ref_ac_columns_search: 'true'
+             * }
+             * @param {string?} attributes 
+             * @returns {{[key:string]:string?}}
+             */
+            function toAttributeMap(attributes) {
+                if (!attributes) {
+                    return {};
+                }
+                var attributeParts = attributes.split(',');
+                return attributeParts.reduce(function(map, part) {
+                    var parts = part.split('=');
+                    if (parts.length === 2) {
+                        map[parts[0].trim()] = parts[1].trim();
+                    } else {
+                        map[parts[0].trim()] = null;
+                    }
+                    return map;
+                }, /** @type {{[key:string]:string?}} */ ({}));
+            }
+
+            /**
+             * @param {{[key:string]:string?}} sourceMap 
+             * @param {{[key:string]:string?}} targetMap 
+             * @returns {string[]}
+             */
+            function compareAttributeMap(sourceMap, targetMap) {
+                var errors = /** @type string[] */ ([]);
+
+                Object.keys(sourceMap).forEach(function(key) {
+                    if (excludedAttributes.indexOf(key) >= 0) {
+                        return;
+                    }
+
+                    if (targetMap[key] !== sourceMap[key]) {
+                        errors.push('Attribute ' + key + ' does not match: ' + sourceMap[key] + ' vs ' + targetMap[key]);
+                    }
+                });
+
+                return errors;
+            }
+
+            // Validate the attributes field
+            var sourceAttributes = sourceDictionaryEntry.getValue('attributes');
+            var sourceAttributeMap = toAttributeMap(sourceAttributes);
+            var targetAttributes = targetDictionaryEntry.getValue('attributes');
+            var targetAttributeMap = toAttributeMap(targetAttributes);
+            return compareAttributeMap(sourceAttributeMap, targetAttributeMap);
+        }
+
+
+        /**
+         * @param {string} sourceTable - The source table to validate
+         * @param {string} targetTable - The target table to validate
+         * @param {KLF_ColumnValidator_Pair} columnPair
+         * @returns {string[]}
+         */
+        function validateColumnPair(sourceTable, targetTable, columnPair) {
+            var errors = [];
+
+            var sourceField = columnPair.sourceField;
+            var targetField = columnPair.targetField;
+
+            if (sourceField.type !== targetField.type) {
+                errors.push('Field types do not match: ' + sourceField.name + ' (' + sourceField.type + ') vs ' + targetField.name + ' (' + targetField.type + ')');
+            }
+
+            // Add more validation logic here
+            // For example, you can check if the field is mandatory, unique, etc.
+            var sourceDictionaryEntry = getDictionaryEntry(sourceField);
+            var targetDictionaryEntry = getDictionaryEntry(targetField);
+            errors = errors.concat(validateColumnDictionaryEntry(sourceTable, sourceDictionaryEntry, targetTable, targetDictionaryEntry));
+
+            if (errors.length === 0) {
+                logDebug(CHECKMARK + ' "' + columnPair.sourceField.name + '" column configuration is valid');
+            } else {
+                logDebug(XMARK + ' "' + columnPair.sourceField.name + '" column configuration is not valid');
+            }
+
+            return errors;
+        }
+
+        /**
+         * @param {GlideRecord} sourceGR
+         * @param {GlideRecord} targetGR
+         * @param {string[]} fieldsToCheck
+         * @returns {string[]}
+         */
+        function validateGlideRecordFields(sourceGR, targetGR, fieldsToCheck) {
+            var errors = /** @type string[] */ ([]);
+            fieldsToCheck.forEach(function(field) {
+                var fieldType = String(sourceGR[field].getED().getInternalType());
+                var sourceValue = sourceGR.getValue(field);
+                var targetValue = targetGR.getValue(field);
+
+                if (fieldType === 'boolean') {
+                    if (Boolean(sourceGR[field]) !== Boolean(targetGR[field])) {
+                        errors.push('Field "' + sourceGR.getTableName() + '.' + field + '" does not match: "' + sourceValue + '" vs "' + targetValue + '"');
+                    }
+                } else {
+                    if (sourceValue !== targetValue) {
+                        errors.push('Field "' + sourceGR.getTableName() + '.' + field + '" does not match: "' + sourceValue + '" vs "' + targetValue + '"');
+                    }
+                }
+            });
+            return errors;
+        }
+
+        /**
+         * Validates the choices associated with a dictionary entry
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]} errors
+         */
+        function validateChoices(sourceDictionaryEntry, targetDictionaryEntry) {
+            var errors = /** @type string[] */ ([]);
+
+            // Query source choices first
+            var sourceChoices = [];
+            var sourceChoiceGR = new GlideRecord('sys_choice');
+            sourceChoiceGR.addQuery('name', sourceDictionaryEntry.getValue('name'));
+            sourceChoiceGR.addQuery('element', sourceDictionaryEntry.getValue('element'));
+            sourceChoiceGR.query();
+            while (sourceChoiceGR.next()) {
+                sourceChoices.push({
+                    sysId: sourceChoiceGR.getUniqueValue(),
+                    name: sourceChoiceGR.getValue('name'),
+                    element: sourceChoiceGR.getValue('element'),
+                    label: sourceChoiceGR.getValue('label'),
+                    value: sourceChoiceGR.getValue('value'),
+                    sequence: sourceChoiceGR.getValue('sequence'),
+                    inactive: sourceChoiceGR.getValue('inactive')
+                });
+            }
+
+            // Loop through source choices and make sure there is a target choice that matches
+            sourceChoices.forEach(function(sourceChoice) {
+                var name = targetDictionaryEntry.getValue('name');
+                var element = targetDictionaryEntry.getValue('element');
+
+                var targetChoiceGR = new GlideRecord('sys_choice');
+                targetChoiceGR.addQuery('name', name);
+                targetChoiceGR.addQuery('element', element);
+                targetChoiceGR.addQuery('label', sourceChoice.label);
+                targetChoiceGR.addQuery('value', sourceChoice.value);
+                targetChoiceGR.query();
+                if (!targetChoiceGR.next()) {
+                    errors.push('Choice missing - ' + name + '.' + element + ': ' + sourceChoice.label + '[' + sourceChoice.value + ']');
+                    return;
+                }
+
+                var sourceChoiceGR = new GlideRecord('sys_choice');
+                if (!sourceChoiceGR.get(sourceChoice.sysId)) {
+                    throw 'Could not find source choice: ' + sourceChoice.sysId;
+                }
+
+                var recordErrors = validateGlideRecordFields(sourceChoiceGR, targetChoiceGR, FLDS.SYS_CHOICE);
+                if (recordErrors.length > 0) {
+                    var errorHeader = ('Choice mismatch - ' + sourceChoice.label + '[' + sourceChoice.value + ']');
+                    var subErrors = recordErrors.map(function(error) {
+                        return '  ' + error;
+                    }).join('\n');
+                    errors.push(errorHeader + '\n' + subErrors);
+                }
+            });
+
+            return errors;
+        }
+
+        /**
+         * Validates the sys_dictionary_override records associated with a dictionary entry
+         * @param {string} sourceTable
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {string} targetTable
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]} errors
+         */
+        function validateDictionaryOverrides(sourceTable, sourceDictionaryEntry, targetTable, targetDictionaryEntry) {
+            var errors = /** @type string[] */ ([]);
+
+            // Get sys_dictionary_override table for source and target. There should be one for each
+            var sourceOverride = new GlideRecord('sys_dictionary_override');
+            sourceOverride.addQuery('name', sourceTable);
+            sourceOverride.addQuery('element', sourceDictionaryEntry.getValue('element'));
+            sourceOverride.query();
+            if (!sourceOverride.next()) {
+                // No need to validate if there is no override
+                return [];
+            }
+
+            var targetOverride = new GlideRecord('sys_dictionary_override');
+            targetOverride.addQuery('name', targetTable);
+            targetOverride.addQuery('element', targetDictionaryEntry.getValue('element'));
+            targetOverride.query();
+            if (!targetOverride.next()) {
+                errors.push('Dictionary override not found for column ' + targetDictionaryEntry.getValue('name') + '.' + targetDictionaryEntry.getValue('element'));
+                return errors;
+            }
+
+            // Validate the sys_dictionary_override fields
+            errors = errors.concat(validateGlideRecordFields(sourceOverride, targetOverride, FLDS.SYS_DICTIONARY_OVERRIDE));
+
+            return errors;
+        }
+
+        /**
+         * Validates the sys_documentation label associated with a dictionary entry
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]} errors
+         */
+        function validateLabel(sourceDictionaryEntry, targetDictionaryEntry) {
+            var errors = [];
+
+            // Check the field label
+            // How to get the sys_documentation field related to a sys_dictionary?
+            /**
+             * @param {GlideRecord} dictionaryEntry
+             * @returns {GlideRecord?} sys_documentation | null
+             */
+            function getLabel(dictionaryEntry) {
+                var label = new GlideRecord('sys_documentation');
+                label.addQuery('element', dictionaryEntry.getValue('element'));
+                label.addQuery('name', dictionaryEntry.getValue('name'));
+                label.query();
+                if (label.next()) {
+                    return label;
+                }
+                return null;
+            }
+
+            var sourceLabel = getLabel(sourceDictionaryEntry);
+            var targetLabel = getLabel(targetDictionaryEntry);
+            if (!sourceLabel) {
+                errors.push('Could not find sys_documentation label for source: ' + sourceDictionaryEntry.getValue('name') + '.' + sourceDictionaryEntry.getValue('element'));
+            }
+            if (!targetLabel) {
+                errors.push('Could not find sys_documentation  label for target: ' + targetDictionaryEntry.getValue('name') + '.' + targetDictionaryEntry.getValue('element'));
+            }
+
+            if (sourceLabel && targetLabel) {
+                errors = errors.concat(validateGlideRecordFields(sourceLabel, targetLabel, FLDS.SYS_DOCUMENTATION));
+            }
+
+            return errors;
+        }
+
+        /**
+         * Returns true if this dictionary entry has choices
+         * @param {GlideRecord} dictionaryEntry
+         * @returns {boolean}
+         */
+        function isChoice(dictionaryEntry) {
+            var choiceType = dictionaryEntry.getValue('choice');
+            return choiceType == '3' || choiceType == '1';
+        }
+
+        /**
+         * Validates the Calculated Value section of sys_dictionary
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]}
+         */
+        function validateCalculatedValue(sourceDictionaryEntry, targetDictionaryEntry) {
+
+            var errors = [];
+
+            // Validate the calculation field
+            var sourceVirtual = sourceDictionaryEntry.getValue('virtual');
+            var targetVirtual = targetDictionaryEntry.getValue('virtual');
+            if (sourceVirtual !== targetVirtual) {
+                errors.push('"Calculated[virtual]" value does not match. Check "Calculated Value" section: ' + sourceVirtual + ' vs ' + targetVirtual);
+            }
+
+            if (Boolean(sourceDictionaryEntry.virtual)) {
+                var sourceCalculation = sourceDictionaryEntry.getValue('calculation');
+                var targetCalculation = targetDictionaryEntry.getValue('calculation');
+                if (sourceCalculation !== targetCalculation) {
+                    errors.push('"Calculated[calculation]" value does not match. Check "Calculated Value" section: ' + sourceCalculation + ' vs ' + targetCalculation);
+                }
+            }
+
+            return errors;
+        }
+
+        /**
+         * Validates the dictionary entry fields for the columns are the same
+         * @param {string} sourceTable
+         * @param {GlideRecord} sourceDictionaryEntry 
+         * @param {string} targetTable
+         * @param {GlideRecord} targetDictionaryEntry 
+         * @returns {string[]}
+         */
+        function validateColumnDictionaryEntry(sourceTable, sourceDictionaryEntry, targetTable, targetDictionaryEntry) {
+            var errors = /** @type string[] */ ([]);
+
+            // Validate the sys_dictionary record for the field
+            errors = errors.concat(validateGlideRecordFields(sourceDictionaryEntry, targetDictionaryEntry, FLDS.SYS_DICTIONARY));
+
+            // Validate the associated sys_dictionary.attributes 
+            errors = errors.concat(validateCalculatedValue(sourceDictionaryEntry, targetDictionaryEntry));
+
+            // Check the field dictionary overrides
+            errors = errors.concat(validateDictionaryOverrides(sourceTable, sourceDictionaryEntry, targetTable, targetDictionaryEntry));
+
+            // Validate the associated sys_dictionary.attributes 
+            errors = errors.concat(validateAttributes(sourceDictionaryEntry, targetDictionaryEntry));
+
+            // Validate the associated sys_documentation record
+            errors = errors.concat(validateLabel(sourceDictionaryEntry, targetDictionaryEntry));
+
+            // Check field choices if the field is a choice field
+            if (isChoice(sourceDictionaryEntry)) {
+                errors = errors.concat(validateChoices(sourceDictionaryEntry, targetDictionaryEntry));
+            }
+
+            return errors;
+        }
+
+        return {
+            validateColumn: validateColumn,
+            validateColumnPair: validateColumnPair,
+            validateGlideRecordFields: validateGlideRecordFields
+        };
+
+    })();
+
+    var _KLF_TableValidator = (function() {
+
+        /**
+         * @param {KLF_ValidationReport} report
+         * @returns {string} - A formatted report of the validation results
+         */
+        function formatReport(report) {
+            var _results = report.results;
+            var filteredResults = Object.keys(_results).reduce(function(filteredResults, fieldOrTable) {
+                var results = _results[fieldOrTable];
+                if (results.length === 0) {
+                    return filteredResults;
+                } else {
+                    filteredResults[fieldOrTable] = results;
+                    return filteredResults;
+                }
+            }, /** @type {{[fieldOrTable:string]:string[]}} */ ({}));
+
+            var separator = '\n=======================================================================================================================================\n';
+
+            if (Object.keys(filteredResults).length === 0) {
+                return '\n\n' + report.title + '\n\n' + CHECKMARK + ' No errors found' + separator;
+            }
+
+
+            var formattedResults = Object.keys(filteredResults).map(function(fieldOrTable) {
+                var results = filteredResults[fieldOrTable];
+                var formattedResults = results.map(function(result) {
+                    return BULLET + result;
+                });
+                return '\n' + fieldOrTable + '\n\n' + formattedResults.join('\n\n');
+            });
+
+
+            formattedResults.unshift('\n' + report.columnNameResult);
+            formattedResults.unshift('\n\n' + report.title);
+            formattedResults.push('');
+
+            return formattedResults.join(separator);
+        }
+
+        /**
+         * Validates the fields in a column are the same between two tables
+         * @param {KLF_ColumnValidator_Field[]} sourceFields - The source table to validate
+         * @param {KLF_ColumnValidator_Field[]} targetFields - The target table to validate
+         * @returns {string[]} - An array of error messages
+         */
+        function validateColumnNames(sourceFields, targetFields) {
+            var errors = [];
+
+            // Make sure the field names are the same
+            var sourceFieldNames = sourceFields.map(function(field) {
+                return field.name;
+            });
+
+            var targetFieldNames = targetFields.map(function(field) {
+                return field.name;
+            });
+            var missingFields = sourceFieldNames.filter(function(fieldName) {
+                return targetFieldNames.indexOf(fieldName) === -1;
+            });
+            if (missingFields.length > 0) {
+                errors.push('Missing columns in target table: ' + missingFields.join(','));
+            }
+
+
+            if (errors.length === 0) {
+                logDebug(CHECKMARK + ' All table columns exist in target table');
+            } else {
+                logDebug(XMARK + ' Table columns are missing');
+            }
+
+            return errors;
+        }
+
+        /**
+         * Zips the source and target fields together. If
+         * the source field is not found in the target
+         * table, it will not be included in the result.
+         * @param {KLF_ColumnValidator_Field[]} sourceFields 
+         * @param {KLF_ColumnValidator_Field[]} targetFields 
+         * @returns {KLF_ColumnValidator_Pair[]}
+         */
+        function pairColumns(sourceFields, targetFields) {
+            return sourceFields.map(function(sourceField) {
+                var targetField = null;
+                for (var i = 0; i < targetFields.length; i++) {
+                    var candidateTargetField = targetFields[i];
+                    if (candidateTargetField.name === sourceField.name) {
+                        targetField = candidateTargetField;
+                        break;
+                    }
+                }
+                if (!targetField) {
+                    return null;
+                }
+                return {
+                    sourceField: sourceField,
+                    targetField: targetField
+                };
+            }).filter(function(pair) {
+                return pair !== null;
+            });
+        }
+
+        /**
+         * Validates the source and target tables objects. This is the object that holds
+         * the table name and other metadata about the table, as well as the fields in the table.
+         * @param {string} sourceTableName 
+         * @param {string} targetTableName 
+         * @returns {string[]} Any errors that were found
+         */
+        function validateTableDbObject(sourceTableName, targetTableName) {
+            logDebug('Validating table sys_db_object for ' + sourceTableName + ' against ' + targetTableName);
+
+            var errors = [];
+
+            var sourceDbObject = new GlideRecord('sys_db_object');
+            if (!sourceDbObject.get('name', sourceTableName)) {
+                throw new Error('Source table ' + sourceTableName + ' does not exist in sys_db_object');
+            }
+
+            var targetDbObject = new GlideRecord('sys_db_object');
+            if (!targetDbObject.get('name', targetTableName)) {
+                throw new Error('Target table ' + targetTableName + ' does not exist in sys_db_object');
+            }
+
+            // Validate number ref
+            if (!sourceDbObject.number_ref.nil()) {
+                // Make sure the sys_number_counter is set to a higher value than the source table
+                if (targetDbObject.number_ref.nil()) {
+                    errors.push('Target table ' + targetTableName + ' does not have a number reference');
+                }
+
+                var sourceNumberPrefix = sourceDbObject.number_ref.prefix.toString();
+                var targetNumberPrefix = targetDbObject.number_ref.prefix.toString();
+                if (sourceNumberPrefix !== targetNumberPrefix) {
+                    errors.push(
+                        'Target table ' +
+                        targetTableName +
+                        ' does not have the same number reference\n  prefix as source table ' +
+                        sourceTableName + ' - "' + sourceNumberPrefix + '" vs "' + targetNumberPrefix + '"');
+                }
+
+                // Make sure the sys_number_counter is set to a higher value than the source table
+                /**
+                 * @param {string} tableName
+                 * @returns {GlideRecord?}
+                 */
+                function getNumberCounter(tableName) {
+                    var counter = new GlideRecord('sys_number_counter');
+                    if (!counter.get('table', tableName)) {
+                        errors.push('Number Counter not found for table ' + tableName);
+                        return null;
+                    }
+                    return counter;
+                }
+                var sourceNumberCounter = getNumberCounter(sourceTableName);
+                var targetNumberCounter = getNumberCounter(targetTableName);
+                if (sourceNumberCounter && targetNumberCounter) {
+                    var sourceNumber = Number(sourceNumberCounter.getValue('number'));
+                    var targetNumber = Number(targetNumberCounter.getValue('number'));
+                    if (targetNumber < sourceNumber) {
+                        errors.push(
+                            'Target table ' +
+                            targetTableName +
+                            ' does not have a higher number reference\n  counter than source table ' +
+                            sourceTableName + ' [' + sourceNumber + '] vs ' + targetTableName + '[' + targetNumber + ']');
+                    }
+                }
+            }
+
+            // Validate sys_db_object fields
+            errors = errors.concat(_KLF_ColumnValidator.validateGlideRecordFields(sourceDbObject, targetDbObject, FLDS.SYS_DB_OBJECT));
+
+            return errors;
+        }
+
+        /**
+         * Validates the sys_dictionary entry for the source and target tables. This is
+         * the "collection" record that is in the sys_dictionary table.
+         * @param {string} sourceTable 
+         * @param {string} targetTable 
+         * @returns {string[]} Any errors that were found
+         */
+        function validateSysDictionaryCollection(sourceTable, targetTable) {
+            var sourceDictionary = new GlideRecord('sys_dictionary');
+            sourceDictionary.addQuery('name', sourceTable);
+            sourceDictionary.addQuery('internal_type', 'collection');
+            sourceDictionary.query();
+            if (!sourceDictionary.next()) {
+                throw new Error('Source table ' + sourceTable + ' does not exist in sys_dictionary as a collection');
+            }
+
+            var targetDictionary = new GlideRecord('sys_dictionary');
+            targetDictionary.addQuery('name', targetTable);
+            targetDictionary.addQuery('internal_type', 'collection');
+            targetDictionary.query();
+            if (!targetDictionary.next()) {
+                throw new Error('Target table ' + targetTable + ' does not exist in sys_dictionary as a collection');
+            }
+
+            return _KLF_ColumnValidator.validateGlideRecordFields(sourceDictionary, targetDictionary, FLDS.SYS_DICTIONARY);
+        }
+
+        /**
+         * @param {string} sourceTable 
+         * @param {string} targetTable 
+         */
+        function validateAndLogResults(sourceTable, targetTable) {
+            var report = validate(sourceTable, targetTable);
+            var formattedReport = formatReport(report);
+            logInfo(formattedReport);
+        }
+
+        /**
+         * @param {string} sourceTable 
+         * @param {string} targetTable 
+         * @returns {KLF_ValidationReport}
+         */
+        function validate(sourceTable, targetTable) {
+            logDebug('Validating ' + sourceTable + ' against ' + targetTable);
+            var errors = /** @type string[] */ ([]);
+
+            /** @type {{[fieldOrTable:string]:string[]}} */
+            var results = {};
+            results[sourceTable] = [];
+
+            var sourceGR = new GlideRecord(sourceTable);
+            if (!sourceGR.isValid()) {
+                throw new Error('Invalid source table name ' + sourceTable);
+            }
+
+            var targetGR = new GlideRecord(sourceTable);
+            if (!targetGR.isValid()) {
+                throw new Error('Invalid target table name ' + targetTable);
+            }
+
+            errors = errors.concat(validateTableDbObject(sourceTable, targetTable));
+
+            errors = errors.concat(validateSysDictionaryCollection(sourceTable, targetTable));
+
+            // First we need to get a list of all the fields in the source table
+            var sourceFields = getFieldsForTable(sourceTable);
+            var targetFields = getFieldsForTable(targetTable);
+
+            // We need to make sure each field in the column is the same between the two tables
+            var columnNameErrors = validateColumnNames(sourceFields, targetFields);
+            var columnNameResult = (columnNameErrors.length === 0) ?
+                (CHECKMARK + ' All table columns exist in target table') :
+                (XMARK + ' Table columns are missing');
+            errors = errors.concat(columnNameErrors);
+
+            var columnPairs = pairColumns(sourceFields, targetFields);
+
+            columnPairs.forEach(function(columnPair) {
+                var source = columnPair.sourceField;
+                results[sourceTable + '.' + source.name] = _KLF_ColumnValidator.validateColumnPair(sourceTable, targetTable, columnPair);
+            });
+
+            // Add your validation logic here
+            results[sourceTable] = errors;
+            return {
+                title: 'Validation Results for ' + sourceTable + ' against ' + targetTable,
+                columnNameResult: columnNameResult,
+                results: results
+            };
+        }
+
+        return {
+            validate: validate,
+            validateAndLogResults: validateAndLogResults,
+            validateColumnNames: validateColumnNames,
+            pairColumns: pairColumns,
+            formatReport: formatReport
+        };
+    })();
+
+    return {
+        ColumnValidator: _KLF_ColumnValidator,
+        TableValidator: _KLF_TableValidator,
+        quiet: true
+    };
+})();
+var global = global || {};
+
+/**
+ * Creates a mock RESTAPIRequest object for testing purposes.
+ * @constructor
+ * @param {Object} config - Configuration object for the mock request.
+ * @param {string} [config.url='https://example.com/api/endpoint'] - The full URL of the request.
+ * @param {string} [config.uri='/api/endpoint'] - The URI part of the URL.
+ * @param {string} [config.queryString=''] - The query string part of the URL.
+ * @param {Object} [config.body] - The request body.
+ */
+global.KLF_TestMockRESTAPIRequest = function(config) {
+    config = config || {};
+    this.url = config.url || 'https://example.com/api/endpoint';
+    this.uri = config.uri || '/api/endpoint';
+    this.queryString = config.queryString || '';
+    this.body = config.body || new global.KLF_TestMockRESTAPIRequest.MockRESTAPIRequestBody();
+    /** @type {{[key:string]:string}} */
+    this.headers = {};
+    /** @type {{[key:string]:string}} */
+    this.queryParams = {};
+    this.parseQueryString();
+};
+
+/**
+ * Gets the value of the specified header.
+ * @param {string} headerName - The name of the header.
+ * @returns {string} The value of the header, or an empty string if not found.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.getHeader = function(headerName) {
+    return this.headers[headerName] || '';
+};
+
+/**
+ * Gets the list of supported response content types.
+ * @returns {string[]} An array of supported content types.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.getSupportedResponseContentTypes = function() {
+    return ['application/json', 'application/xml', 'text/plain'];
+};
+
+/**
+ * Gets the requested query category from the query parameters.
+ * @returns {string} The value of the 'sysparm_query_category' parameter, or an empty string if not found.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.getRequestedQueryCategory = function() {
+    return this.queryParams['sysparm_query_category'] || '';
+};
+
+/**
+ * Sets a header value.
+ * @param {string} headerName - The name of the header.
+ * @param {string} headerValue - The value of the header.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.setHeader = function(headerName, headerValue) {
+    this.headers[headerName] = headerValue;
+};
+
+/**
+ * Sets the query string and parses it.
+ * @param {string} queryString - The query string to set.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.setQueryString = function(queryString) {
+    this.queryString = queryString;
+    this.parseQueryString();
+};
+
+/**
+ * Parses the query string into key-value pairs.
+ */
+global.KLF_TestMockRESTAPIRequest.prototype.parseQueryString = function() {
+    this.queryParams = {};
+    if (this.queryString) {
+        var pairs = this.queryString.split('&');
+        for (var i = 0; i < pairs.length; i++) {
+            var pair = pairs[i].split('=');
+            var key = decodeURIComponent(pair[0]);
+            var value = decodeURIComponent(pair[1] || '');
+            this.queryParams[key] = value;
+        }
+    }
+};
+
+/**
+ * Creates a mock RESTAPIRequestBody object for testing purposes.
+ * @constructor
+ * @param {string} [dataString='{"key": "value"}'] - The JSON string representing the body data.
+ * @param {Object} [dataStream=null] - The data stream object (not implemented in this mock).
+ */
+global.KLF_TestMockRESTAPIRequest.MockRESTAPIRequestBody = function(dataString, dataStream) {
+    this.dataString = dataString || '{"key": "value"}';
+    this.dataStream = dataStream || null;
+    /** @type {any} */
+    this.jsonData = null;
+    this.currentIndex = 0;
+};
+
+/**
+ * Gets the next entry from the body data.
+ * @returns {Object|null} The next entry, or null if there are no more entries.
+ */
+global.KLF_TestMockRESTAPIRequest.MockRESTAPIRequestBody.prototype.nextEntry = function() {
+    if (!this.jsonData) {
+        this.jsonData = JSON.parse(this.dataString);
+    }
+
+    if (Array.isArray(this.jsonData)) {
+        if (this.currentIndex < this.jsonData.length) {
+            return this.jsonData[this.currentIndex++];
+        }
+    } else {
+        if (this.currentIndex === 0) {
+            this.currentIndex++;
+            return this.jsonData;
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Checks if there are more entries in the body data.
+ * @returns {boolean} True if there are more entries, false otherwise.
+ */
+global.KLF_TestMockRESTAPIRequest.MockRESTAPIRequestBody.prototype.hasNext = function() {
+    if (!this.jsonData) {
+        this.jsonData = JSON.parse(this.dataString);
+    }
+
+    if (Array.isArray(this.jsonData)) {
+        return this.currentIndex < this.jsonData.length;
+    } else {
+        return this.currentIndex === 0;
+    }
+};
+var global = global || {};
+
+/**
+ * Creates a mock RESTAPIResponse object for testing purposes.
+ * @constructor
+ * @param {Object} config - Configuration object for the mock response.
+ * @param {number} [config.status=200] - The HTTP status code of the response.
+ * @param {{[key:string]:string}} [config.headers={}] - The response headers.
+ * @param {*} [config.body=null] - The response body.
+ */
+global.KLF_TestMockRESTAPIResponse = function(config) {
+    config = config || {};
+    this.status = config.status || 200;
+    /** @type {{[key:string]:string}} */
+    this.headers = config.headers || {};
+    this.body = config.body || null;
+    /** @type {string} */
+    this.error = '';
+    /** @type {any} */
+    this.streamWriter = null;
+};
+
+/**
+ * Sets the HTTP status code of the response.
+ * @param {number} code - The HTTP status code to set.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setStatus = function(code) {
+    this.status = code;
+};
+
+/**
+ * Sets multiple headers at once.
+ * @param {{[key:string]:string}} headers - An object containing header key-value pairs.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setHeaders = function(headers) {
+    for (var key in headers) {
+        if (headers.hasOwnProperty(key)) {
+            this.headers[key] = headers[key];
+        }
+    }
+};
+
+/**
+ * Sets a single header.
+ * @param {string} name - The name of the header.
+ * @param {string} value - The value of the header.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setHeader = function(name, value) {
+    this.headers[name] = value;
+};
+
+/**
+ * Sets the Location header.
+ * @param {string} locationValue - The value for the Location header.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setLocation = function(locationValue) {
+    this.setHeader('Location', locationValue);
+};
+
+/**
+ * Sets the Content-Type header.
+ * @param {string} contentType - The value for the Content-Type header.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setContentType = function(contentType) {
+    this.setHeader('Content-Type', contentType);
+};
+
+/**
+ * Sets an error for the response.
+ * @param {*} error - The error to set.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setError = function(error) {
+    this.error = error;
+};
+
+/**
+ * Sets the response body.
+ * @param {*} body - The body content to set.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.setBody = function(body) {
+    this.body = body;
+};
+
+/**
+ * Gets a stream writer for the response.
+ * @returns {global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream} A mock stream writer.
+ */
+global.KLF_TestMockRESTAPIResponse.prototype.getStreamWriter = function() {
+    if (!this.streamWriter) {
+        this.streamWriter = new global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream();
+    }
+    return this.streamWriter;
+};
+
+/**
+ * Creates a mock RESTAPIResponseStream object for testing purposes.
+ * @constructor
+ */
+global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream = function() {
+    this.content = '';
+};
+
+/**
+ * Writes a string to the stream.
+ * @param {string} stringToWrite - The string to write to the stream.
+ */
+global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream.prototype.writeString = function(stringToWrite) {
+    this.content += stringToWrite;
+};
+
+/**
+ * Simulates writing a stream to the response.
+ * @param {*} inputStream - The input stream to write (not actually used in this mock).
+ */
+global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream.prototype.writeStream = function(inputStream) {
+    this.content += '[Stream Content]';
+};
+
+// Additional methods for testing and debugging
+global.KLF_TestMockRESTAPIResponse.prototype.getStatus = function() {
+    return this.status;
+};
+
+global.KLF_TestMockRESTAPIResponse.prototype.getHeaders = function() {
+    return this.headers;
+};
+
+global.KLF_TestMockRESTAPIResponse.prototype.getBody = function() {
+    return this.body;
+};
+
+global.KLF_TestMockRESTAPIResponse.prototype.getError = function() {
+    return this.error;
+};
+
+global.KLF_TestMockRESTAPIResponse.MockRESTAPIResponseStream.prototype.getContent = function() {
+    return this.content;
+};
 /**
  * This script include provides utility functions for unit testing.
  * 
@@ -5471,7 +8663,7 @@ var global = global || {};
 
 
 /**
- * @typedef {{recordTracker?: global.KLF_TestUtils.RecordTracker,commonGroupName?:string,commonUsername?:string,adminUsername?:string}} KLF_TestUtilsConfig
+ * @typedef {{recordTracker?: global.KLF_TestUtils.RecordTracker,adminUsername?:string}} KLF_TestUtilsConfig
  */
 
 /**
@@ -5483,9 +8675,64 @@ var global = global || {};
 global.KLF_TestUtils = function(config) {
     var _config = config || /** @type {KLF_TestUtilsConfig} */ ({});
     this.recordTracker = _config.recordTracker || new global.KLF_TestUtils.RecordTracker();
-    this.commonGroupName = _config.commonGroupName || gs.getProperty('KLF_TestUtils.common_group_name', 'KLF_TestGroup');
-    this.commonUsername = _config.commonUsername || gs.getProperty('KLF_TestUtils.common_username', 'KLF_TestUser');
     this.adminUsername = _config.adminUsername || gs.getProperty('KLF_TestUtils.admin_username', 'KLF_TestAdminUser');
+};
+
+global.KLF_TestUtils.matchers = {
+    /**
+     * Copied from the jasmine deep equality matcher. The only difference
+     * is that this version allows for an additional message to be provided
+     * so that the message can be more descriptive in the case of a test failure
+     * @param {any} util 
+     * @param {any} customEqualityTesters 
+     */
+    toBeEqual: function(util, customEqualityTesters) {
+        customEqualityTesters = customEqualityTesters || [];
+
+        return {
+            /**
+             * @param {any} actual 
+             * @param {any} expected 
+             * @param {string} [additionalMessage] 
+             * @returns {{pass:boolean,message?:string}}
+             */
+            compare: function(actual, expected, additionalMessage) {
+                var result = {
+                    pass: false,
+                    message: ''
+                };
+
+                // @ts-ignore
+                var diffBuilder = jasmine.DiffBuilder();
+
+                result.pass = util.equals(actual, expected, customEqualityTesters, diffBuilder);
+
+                // TODO: only set error message if test fails
+                var message = diffBuilder.getMessage();
+                if (additionalMessage) {
+                    var formattedAdditionalMessage = "'" + additionalMessage + "'";
+                    result.message = message + ', ' + formattedAdditionalMessage;
+                } else {
+                    result.message = message;
+                }
+
+                return result;
+            }
+        };
+    }
+};
+
+/**
+ * Gets the property or throws an error if the property is not found
+ * @param {string} property - The name of the property to get
+ * @returns {string} The value of the property
+ */
+global.KLF_TestUtils.getProperty = function(property) {
+    var value = gs.getProperty(property);
+    if (!value) {
+        throw new Error('Property ' + property + ' not found');
+    }
+    return value;
 };
 
 /**
@@ -5566,7 +8813,63 @@ global.KLF_TestUtils.RecordTracker.prototype = {
 
 global.KLF_TestUtils.prototype = {
 
+    /**
+     * Returns true if this script is executing in an ATF context
+     * @returns {boolean}
+     */
+    isAtf: function() {
+        return typeof jasmine === 'object' && typeof describe === 'function';
+    },
+
     glideRecordUtils: new global.KLF_GlideRecordUtils(),
+
+    /** @type {Chance.Chance} */
+    // @ts-ignore
+    chance: global.KLF_TestChance,
+
+    /**
+     * Uses the chance library to generate a string 
+     * containing only letters
+     * @param {number} [length=10] - The length of the string to generate
+     * @returns {string}
+     */
+    getRandomAlphaNumericString: function(length) {
+        return this.chance.string({
+            length: length || 10,
+            pool: 'abcdefghijklmnopqrstuvwxyz'
+        });
+    },
+
+    /**
+     * Uses the chance library to generate a string that looks
+     * like a username
+     * @returns {string}
+     */
+    getRandomUsername: function() {
+        return this.chance.string({
+            length: 7,
+            pool: 'abcdefghijklmnopqrstuvwxyz'
+        });
+    },
+
+    /**
+     * Uses the chance library to generate a string that looks
+     * like a group name
+     * @returns {string}
+     */
+    getRandomGroupName: function() {
+        return 'KLF_TestGroup_' + this.getRandomUsername();
+    },
+
+    /**
+     * @param {GlideRecord} glideRecord
+     * @returns {GlideRecord}
+     */
+    updateAndTrack: function(glideRecord) {
+        glideRecord.update();
+        this.recordTracker.trackByGlideRecord(glideRecord);
+        return glideRecord;
+    },
 
     /**
      * Cleans up all records that were created during the test
@@ -5652,20 +8955,16 @@ global.KLF_TestUtils.prototype = {
     },
 
     /**
-     * Returns common user sys_user record or null if it does not exist
+     * Always returns null to indicate that there is no common user by default.
+     * It was found that user deletion during ATF tests has a significant performance impact.
      * @returns {?GlideRecord} The sys_user record of the common user or null if it does not exist
      */
     getCommonUser: function() {
-        var user = new GlideRecord('sys_user');
-        if (user.get('user_name', this.commonUsername)) {
-            return user;
-        } else {
-            return null;
-        }
+        return null;
     },
 
     /**
-     * Creates a user with no roles or groups to simulate a common user
+     * Creates a user with the admin role
      * @returns {GlideRecord} The newly created sys_user record
      */
     createAdminUser: function() {
@@ -5676,11 +8975,37 @@ global.KLF_TestUtils.prototype = {
     },
 
     /**
+     * Returns the admin user sys_user record or creates it if it does not exist
+     * @returns {GlideRecord} The sys_user record of the admin user
+     */
+    getOrCreateAdminUser: function() {
+        var user = new GlideRecord('sys_user');
+        if (user.get('user_name', this.adminUsername)) {
+            return user;
+        } else {
+            return this.createAdminUser();
+        }
+    },
+
+    /**
+     * Sets the password for the given user
+     * @param {GlideRecord} user 
+     * @returns {string} The password that was set
+     */
+    setPasswordForUser: function(user) {
+        // @ts-ignore
+        var password = SNC.PasswordPolicyEvaluator.generateUserPassword(user.getValue('user_name'));
+        user.setDisplayValue('user_password', password);
+        user.update();
+        return password;
+    },
+
+    /**
      * Creates a user with no roles or groups to simulate a common user
      * @returns {GlideRecord} The newly created sys_user record
      */
     createCommonUser: function() {
-        var user = this.createUser(this.commonUsername);
+        var user = this.createUser(this.getRandomUsername());
         this.recordTracker.trackByGlideRecord(user);
         return user;
     },
@@ -5691,8 +9016,8 @@ global.KLF_TestUtils.prototype = {
      * @returns {{group:GlideRecord,user:GlideRecord,groupMember:GlideRecord}} The newly created sys_user_group and associated sys_user and sys_user_grmember records
      */
     createCommonGroup: function() {
-        var group = this.createGroup(this.commonGroupName);
-        var user = this.getOrCreateCommonUser();
+        var group = this.createGroup(this.getRandomGroupName());
+        var user = this.createUser(this.getRandomUsername());
         var groupMember = this.addUserToGroup(group, user);
         return {
             group: group,
@@ -5967,5 +9292,4 @@ global.KLF_TestUtils.prototype = {
         }
         return scope.getUniqueValue();
     }
-
 };

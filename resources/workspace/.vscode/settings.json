@@ -19,7 +19,7 @@
     "editor.defaultFormatter": "HookyQR.beautify",
     "typescript.tsserver.experimental.enableProjectDiagnostics": true,
     "eslint.lintTask.enable": true,
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "now.syncOnSave": true,
     "[javascript]": {
         "editor.defaultFormatter": "HookyQR.beautify"

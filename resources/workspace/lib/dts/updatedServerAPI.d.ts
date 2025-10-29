@@ -2077,6 +2077,133 @@ declare namespace global {
          */
         _z(): string;
     }
+
+    /**
+     * Utility class for adding ServiceNow records and their dependencies to update sets
+     */
+    class addToUpdateSetUtils {
+        /**
+         * URL reference for update set batching documentation
+         */
+        updateSetBatchingURL: string;
+        
+        /**
+         * Whether to include users when adding groups to update sets
+         */
+        includeUsersWithGroups: boolean;
+        
+        /**
+         * Whether to include attachments when adding records to update sets
+         */
+        includeAttachments: boolean;
+        
+        /**
+         * Whether to suppress photo attachments
+         */
+        suppressPhotoAttachments: boolean;
+        
+        /**
+         * Whether to prevent adding records to the default update set
+         */
+        preventDefaultUpdateSet: boolean;
+        
+        /**
+         * Whether to prevent adding protected NLU models
+         */
+        preventProtectedNLUModels: boolean;
+        
+        /**
+         * Whether to include database view tables
+         */
+        includeDbViewTables: boolean;
+        
+        /**
+         * ServiceNow update set API instance
+         */
+        updateSetAPI: any;
+        
+        /**
+         * Current client session
+         */
+        clientSession: GlideSession;
+        
+        /**
+         * System ID of this script include
+         */
+        scriptSysID: string;
+        
+        /**
+         * API name of this script include
+         */
+        scriptAPIName: string;
+        
+        /**
+         * Array of table names that should be excluded from update sets
+         */
+        excludedTables: string[];
+        
+        /**
+         * Performance Analytics tracking data
+         */
+        PAData?: {
+            sysPortalIDs: string[];
+            indicatorIDs: string[];
+            breakdownIDs: string[];
+        };
+        
+        /**
+         * Initialize the utility with user preferences from system properties
+         */
+        initialize(): void;
+        
+        /**
+         * Check if the "Add to Update Set" UI Action should be displayed for a record
+         * @param tableRec - The record to check
+         * @returns True if the UI action should be displayed
+         */
+        checkDisplayCondition(tableRec: GlideRecord): boolean;
+        
+        /**
+         * Main function to add a record and its dependencies to an update set
+         * @param tableRec - The record to add to the update set
+         */
+        addToUpdateSet(tableRec: GlideRecord): void;
+        
+        /**
+         * Compile and return the confirmation message after adding records to update sets
+         * @param isList - Whether the action was performed from a list view
+         * @returns HTML formatted confirmation message
+         */
+        compileConfirmationMessage(isList?: boolean): string;
+        
+        /**
+         * Check the table type and add the record with appropriate dependencies
+         * @param tableRec - The record to process
+         * @param tableName - The table name
+         */
+        checkTable(tableRec: GlideRecord, tableName: string): void;
+        
+        /**
+         * Save a record to the current update set
+         * @param tableRec - The record to save
+         * @param validRecordCheck - Whether to validate the record exists (default: true)
+         * @param executeCustomScript - Whether to execute custom scripts (default: true)
+         */
+        saveRecord(tableRec: GlideRecord, validRecordCheck?: boolean, executeCustomScript?: boolean): void;
+        
+        /**
+         * Add a scheduled job to the update set
+         * @param scheduleJobFields - Object containing scheduled job field names and values
+         */
+        addScheduledJob(scheduleJobFields: Record<string, string>): void;
+        
+        /**
+         * Parse a template string into an object
+         * @param templateString - Template string with field=value pairs separated by ^
+         * @returns Object with parsed field/value pairs
+         */
+        parseTemplateString(templateString: string): Record<string, string>;
+    }
 }
 
 declare class ActionUtils {
@@ -2298,4 +2425,70 @@ declare class GlideTextReader {
     constructor(inputStream: GlideScriptableInputStream);
     readLine(): string;
     getEncoding(): string;
+}
+
+declare namespace sn_fd {
+  interface FlowAPI {
+    cancel(contextId: string, reason?: string): void;
+    executeAction(name: string, inputs: Record<string, any>, timeout?: number): Record<string, any>;
+    executeActionQuick(name: string, inputs: Record<string, any>, timeout?: number): Record<string, any>;
+    executeDataStreamAction(name: string, inputs?: Record<string, any>, timeout?: number): ScriptableDataStream;
+    executeFlow(name: string, inputs: Record<string, any>, timeout?: number): void;
+    executeFlowQuick(name: string, inputs: Record<string, any>, timeout?: number): void;
+    executeSubflow(name: string, inputs: Record<string, any>, timeout?: number): Record<string, any>;
+    executeSubflowQuick(name: string, inputs: Record<string, any>, timeout?: number): Record<string, any>;
+    getErrorMessage(contextId: string): string;
+    getFlowStages(scopedFlowName: string): string; // JSON string
+    getOutputs(contextId: string): Record<string, any>;
+    getRunner(): ScriptableFlowRunner;
+    hasApprovals(scopedFlowName: string): "ALWAYS" | "CONDITIONALLY" | "NO" | "UNKNOWN";
+    restartFlowFromContext(contextId: string, providedInputs?: Record<string, any>): ScriptableFlowRunnerResult;
+    scheduleCancel(contextId: string, reason: string, delaySeconds?: number): void;
+    sendMessage(contextSysID: string, message: string, payload: string): void;
+    setEncryptedOutput(password: string): string;
+    startAction(name: string, inputs: Record<string, any>): string; // returns contextId
+    startActionQuick(name: string, inputs: Record<string, any>): void;
+    startFlow(name: string, inputs: Record<string, any>): string; // returns contextId
+    startFlowQuick(name: string, inputs: Record<string, any>): void;
+    startSubflow(name: string, inputs: Record<string, any>): string; // returns contextId
+    startSubflowQuick(name: string, inputs: Record<string, any>): void;
+  }
+
+  interface ScriptableDataStream {
+    close(): void;
+    getItemIndex(): number;
+    getItemInPageIndex(): number;
+    getPageIndex(): number;
+    hasNext(): boolean;
+    next(): any;
+  }
+
+  interface ScriptableFlowRunner {
+    action(scopedActionName: string): this;
+    addInput(name: string, value: any): this;
+    datastream(scopedDatastreamName: string): this;
+    flow(scopedFlowName: string): this;
+    inBackground(): this;
+    inDomain(domainId: string): this;
+    inForeground(): this;
+    quick(): this;
+    run(): ScriptableFlowRunnerResult;
+    subflow(scopedSubflowName: string): this;
+    timeout(ms: number): this;
+    withConnectionAliasOverride(aliasName: string, overrideName: string): this;
+    withInputs(inputs: Record<string, any>): this;
+  }
+
+  interface ScriptableFlowRunnerResult {
+    debug(): any;
+    getContextId(): string;
+    getDataStream(): ScriptableDataStream;
+    getDate(): string;
+    getDomainId(): string;
+    getFlowObjectName(): string;
+    getFlowObjectType(): string;
+    getOutputs(): Record<string, any>;
+  }
+
+  const FlowAPI: FlowAPI;
 }

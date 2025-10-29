@@ -1,10 +1,15 @@
 /**
- * Utility object for date-related operations. This object is particularly useful for
- * getting information related to the Federal Government's fiscal year.
+ * Date utility helpers for fiscal year calculations and business-day arithmetic.
  * 
- * Functions such as getFiscalYear, getCurrentFiscalYear, getFiscalYearStartDate.
- * 
- * As well as doing calculations based on business days such as addBusinessDaysToDate.
+ * Highlights:
+ * - {@link x_912467_klf.DateUtils.getFiscalYear | getFiscalYear}: Given a GlideDateTime, returns the Federal fiscal year (YYYY),
+ *   where dates in October–December are counted toward the next fiscal year.
+ * - {@link x_912467_klf.DateUtils.getCurrentFiscalYear | getCurrentFiscalYear}: Convenience method that returns
+ *   the current Federal fiscal year based on the instance’s local time.
+ * - {@link x_912467_klf.DateUtils.getFiscalYearStartDate | getFiscalYearStartDate}: Returns a GlideDate representing
+ *   the start of a fiscal year (Oct 1). Optionally offset by N prior fiscal years.
+ * - {@link x_912467_klf.DateUtils.addBusinessDaysToDate | addBusinessDaysToDate}: Adds N business days to a given GlideDate,
+ *   honoring a ServiceNow schedule (excluding weekends/holidays via the configured schedule).
  */
 
 //@ts-ignore
@@ -52,13 +57,29 @@ x_912467_klf.DateUtils = (function() {
         },
         /**
          * Returns a GlideDate that represents the number of business days
-         * after the current date based on the days argument
+         * after the current date based on the days argument. The start date must be
+         * a today or a future date.
          * @param {GlideDate} startDate
          * @param {number} days
          * @param {string} [scheduleSysId]
          * @returns {GlideDate}
          */
         addBusinessDaysToDate: function(startDate, days, scheduleSysId) {
+            // Check start date
+            if(!(startDate instanceof GlideDate)) {
+                throw new Error('startDate parameter must be a GlideDate');
+            }
+            if(startDate < this.nowDate()) {
+                throw new Error('startDate parameter must be today or a future date');
+            }
+            if(typeof days !== 'number' || Number.isNaN(days)) {
+                throw new Error('Days parameter must be a number');
+            }
+            if(!scheduleSysId) {
+                scheduleSysId = gs.getProperty('x_912467_klf.DateUtils.business_days_schedule_sys_id');
+            }
+            this.checkSchedule(scheduleSysId);
+
             if (days < 0) throw 'Days must be greater than or equal to 0';
             gs.debug('Start Date: ' + startDate.getByFormat('YYYY-MM-dd'));
             var start = new GlideDateTime();
@@ -67,10 +88,26 @@ x_912467_klf.DateUtils = (function() {
             var duration = days === 0 ? new GlideDuration(1) : new GlideDuration(60 * 60 * 24 * 1000 * days);
             var durationCalculator = new global.DurationCalculator();
             gs.debug('Start: ' + start);
-            durationCalculator.setSchedule(scheduleSysId || 'e0abedd297c4e150b2e1f97e6253af21');
+            durationCalculator.setSchedule(scheduleSysId);
             durationCalculator.calcRelativeDueDate(start, days);
             return durationCalculator.getEndDateTime().getLocalDate();
         },
+
+        /**
+         * Verifises that a schedule with the given sys_id exists
+         * @param {string} scheduleSysId 
+         */
+        checkSchedule: function(scheduleSysId) {
+            var scheduleGr = new GlideRecord('cmn_schedule');
+            if (!scheduleGr.get(scheduleSysId)) {
+                var errorMessage = `Schedule with sys_id "${scheduleSysId}" does not exist.
+                You may need to update the property 'x_912467_klf.DateUtils.business_days_schedule_sys_id' to point to a valid schedule.
+                If a schedule has not been created yet, you can create one using the x_912467_klf.DateUtils.createDefaultFederalBusinessDayScheduleAndUpdateSystemProperty function.`;
+                throw new Error(errorMessage);
+            }
+        },
+
+
         /**
          * Returns a GlideDate that represents the number of business days
          * after the current date based on the days argument
@@ -89,12 +126,35 @@ x_912467_klf.DateUtils = (function() {
         /**
          * Returns a GlideDate that represents the number of business days
          * after the current date based on the days argument
+         * 
+         * This function only works if startDate - days results in a future date. This is a limitation of
+         * the algorithm used. It's using GlideSchedule.isInSchedule which only works for today and future dates.
          * @param {GlideDate} startDate
          * @param {number} days
          * @param {string} [scheduleSysId]
          * @returns {GlideDate}
          */
         subtractBusinessDaysToDate: function(startDate, days, scheduleSysId) {
+            // Check start date
+            if(!(startDate instanceof GlideDate)) {
+                throw new Error('startDate parameter must be a GlideDate');
+            }
+            if(startDate < this.nowDate()) {
+                throw new Error('startDate parameter must be today or a future date');
+            }
+            var earliestPossibleDate = new GlideDateTime(startDate.toString())
+            earliestPossibleDate.addDaysUTC(-1 * days);
+            if(earliestPossibleDate.getDate() < this.nowDate()) {
+                throw new Error('startDate minus days results in a past date which is not supported by this function. The resulting date must be today or a future date.');
+            }
+            if(typeof days !== 'number' || Number.isNaN(days)) {
+                throw new Error('Days parameter must be a number');
+            }
+            if(!scheduleSysId) {
+                scheduleSysId = gs.getProperty('x_912467_klf.DateUtils.business_days_schedule_sys_id');
+            }
+            this.checkSchedule(scheduleSysId);
+
             // Formula to return an estimation of the number of business
             // days in the past. This will be off because it only accounts
             // for weekends, but it will be closer than just starting with
@@ -103,7 +163,7 @@ x_912467_klf.DateUtils = (function() {
                 x = x < 0 ? -1 * x : x;
                 return (((x - (x % 5)) / 5) * 7) + (x % 5);
             }
-            var schedule = new GlideSchedule(scheduleSysId || 'e0abedd297c4e150b2e1f97e6253af21');
+            var schedule = new GlideSchedule(scheduleSysId);
             if (days <= 0) throw 'Days must be greater than O';
             // This script may run on a non-business day, so we get the next business
             // day by asking for the business day O days from now
@@ -114,7 +174,8 @@ x_912467_klf.DateUtils = (function() {
                 var result = null;
                 if (loopCount > 365) throw 'Could not do subtraction';
                 loopCount = loopCount + 1;
-                var candidateAnswer = new GlideDateTime(currentBusinessDay.getValue());
+                var candidateAnswer = new GlideDateTime();
+                candidateAnswer.setDisplayValue(currentBusinessDay.getValue())
                 candidateAnswer.addDaysLocalTime(candidateDayOffset);
                 if (!schedule.isInSchedule(candidateAnswer)) {
                     // if this day is not in the schedule skip to previous day
@@ -144,6 +205,310 @@ x_912467_klf.DateUtils = (function() {
             var daysAgo = new GlideDateTime();
             daysAgo.addDaysLocalTime(days);
             return daysAgo.getDate();
+        },
+        /**
+         * Creates a federal holiday schedule with cmn_schedule_span records for each federal holiday.
+         * The schedule is created with type 'exclude' to represent days when work should not occur.
+         * Federal holidays are based on the U.S. Office of Personnel Management calendar.
+         * Note: Inauguration Day (January 20) is only observed in presidential inauguration years.
+         * 
+         * @param {string} scheduleName - The name of the schedule to create
+         * @returns {string} The sys_id of the newly created cmn_schedule record
+         * @throws {Error} If a schedule with the given name already exists
+         */
+        createFederalHolidaySchedule: function(scheduleName) {
+            // Check if schedule already exists
+            var existingSchedule = new GlideRecord('cmn_schedule');
+            existingSchedule.addQuery('name', scheduleName);
+            existingSchedule.query();
+            if (existingSchedule.next()) {
+                throw new Error('Schedule with name "' + scheduleName + '" already exists with sys_id: ' + existingSchedule.getUniqueValue());
+            }
+
+            // Create the schedule
+            // Need to use KLF_GlideRecordUtils because of scoped application insert restrictions
+            var scheduleGr = new global.KLF_GlideRecordUtils().insertRecord('cmn_schedule', {
+                name: scheduleName,
+                time_zone: 'US/Eastern' // Federal holidays are typically based on Eastern time
+            });
+            if(!scheduleGr.isValidRecord()) {
+                throw new Error('Failed to create schedule');
+            }
+            var scheduleSysId = scheduleGr.getUniqueValue();
+
+            if (!scheduleSysId) {
+                throw new Error('Failed to create schedule');
+            }
+
+            // Constants for day of week (ServiceNow uses 1=Sunday, 2=Monday, etc.)
+            var DAY_OF_WEEK = {
+                SUNDAY: 1,
+                MONDAY: 2,
+                TUESDAY: 3,
+                WEDNESDAY: 4,
+                THURSDAY: 5,
+                FRIDAY: 6,
+                SATURDAY: 7
+            };
+
+            // Constants for week occurrence (positive = 1st, 2nd, 3rd, 4th; negative = last)
+            var WEEK_OCCURRENCE = {
+                FIRST: 1,
+                SECOND: 2,
+                THIRD: 3,
+                FOURTH: 4,
+                LAST: -1
+            };
+
+            // Constants for months
+            var MONTH = {
+                JANUARY: 1,
+                FEBRUARY: 2,
+                MARCH: 3,
+                APRIL: 4,
+                MAY: 5,
+                JUNE: 6,
+                JULY: 7,
+                AUGUST: 8,
+                SEPTEMBER: 9,
+                OCTOBER: 10,
+                NOVEMBER: 11,
+                DECEMBER: 12
+            };
+
+            // Special value for floating holidays (no fixed day of month)
+            var NO_FIXED_DAY = 0;
+
+            // Define federal holidays - these are recurring annual holidays
+            // Based on https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
+            /**
+             * @type {({name: string, month: number, day: number, type: 'fixed'} |
+             * {name: string, month: number, day: number, dayOfWeek: number, occurrence: number, referenceDate: string, type: 'floating'})[]}
+             */
+            var holidays = [
+                { name: "New Year's Day", month: MONTH.JANUARY, day: 1, type: 'fixed' },
+                { name: "Birthday of Martin Luther King, Jr.", month: MONTH.JANUARY, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.MONDAY, occurrence: WEEK_OCCURRENCE.THIRD, referenceDate: '2025-01-20', type: 'floating' },
+                { name: "Washington's Birthday", month: MONTH.FEBRUARY, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.MONDAY, occurrence: WEEK_OCCURRENCE.THIRD, referenceDate: '2025-02-17', type: 'floating' },
+                { name: "Memorial Day", month: MONTH.MAY, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.MONDAY, occurrence: WEEK_OCCURRENCE.LAST, referenceDate: '2025-05-26', type: 'floating' },
+                { name: "Juneteenth National Independence Day", month: MONTH.JUNE, day: 19, type: 'fixed' },
+                { name: "Independence Day", month: MONTH.JULY, day: 4, type: 'fixed' },
+                { name: "Labor Day", month: MONTH.SEPTEMBER, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.MONDAY, occurrence: WEEK_OCCURRENCE.FIRST, referenceDate: '2025-09-01', type: 'floating' },
+                { name: "Columbus Day", month: MONTH.OCTOBER, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.MONDAY, occurrence: WEEK_OCCURRENCE.SECOND, referenceDate: '2025-10-13', type: 'floating' },
+                { name: "Veterans Day", month: MONTH.NOVEMBER, day: 11, type: 'fixed' },
+                { name: "Thanksgiving Day", month: MONTH.NOVEMBER, day: NO_FIXED_DAY, dayOfWeek: DAY_OF_WEEK.THURSDAY, occurrence: WEEK_OCCURRENCE.FOURTH, referenceDate: '2025-11-27', type: 'floating' },
+                { name: "Christmas Day", month: MONTH.DECEMBER, day: 25, type: 'fixed' }
+            ];
+
+            // Create schedule spans for each holiday
+            holidays.forEach(function(holiday) {
+                var beginningOfHoliday, endOfHoliday;
+                if(holiday.type == 'floating') {
+                    var referenceDate = new GlideDateTime(holiday.referenceDate).getDate();
+                    beginningOfHoliday = referenceDate.getDisplayValue() + ' ' + '00:00:00'; // Format should be yyyyMMddTHH:mm:ss
+                    endOfHoliday = referenceDate.getDisplayValue() + ' ' + '23:59:59'; // Format should be yyyyMMddTHH:mm:ss
+                } else {
+                    var year = new GlideDate().getYearLocalTime(); // Current year
+                    var month = holiday.month.toString().padStart(2, '0');
+                    var day = holiday.day.toString().padStart(2, '0');
+                    beginningOfHoliday = month + '-' + day + '-' + year + ' ' + '00:00:00'; // Format should be yyyyMMddTHH:mm:ss
+                    endOfHoliday = month + '-' + day + '-' + year + ' ' + '23:59:59'; // Format should be yyyyMMddTHH:mm:ss
+                }
+                var span = new GlideRecord('cmn_schedule_span');
+                span.newRecord();
+                span.schedule = scheduleSysId;
+                span.name = holiday.name;
+                span.type = 'exclude';
+                span.repeat_type = 'yearly';
+                span.repeat_count = 1; // Repeats annually
+                span.start_date_time = beginningOfHoliday; // This is not a normal DateTime field. It's a Schedule Date/Time field
+                span.end_date_time = endOfHoliday; // This is not a normal DateTime field. It's a Schedule Date/Time field
+                
+                if (holiday.type === 'floating') {
+                    // Floating holiday (e.g., 3rd Monday in January)
+                    span.yearly_type = 'float';
+                    span.month = holiday.month.toString(); // Convert to string because this will throw an error in scoped applications
+                    span.float_week = holiday.occurrence == WEEK_OCCURRENCE.LAST ? 'last' : holiday.occurrence.toString(); // Convert to string because this will throw an error in scoped applications
+                    span.float_day = holiday.dayOfWeek;
+                } else {
+                    // Fixed date holiday (e.g., July 4, December 25)
+                    span.yearly_type = 'doy';
+                }
+                span.insert();
+            });
+
+            gs.info('Created federal holiday schedule "' + scheduleName + '" with sys_id: ' + scheduleSysId);
+            return scheduleSysId;
+        },
+
+        /**
+         * Creates a weekend schedule with cmn_schedule_span records for Saturday and Sunday.
+         * The schedule is created with type 'exclude' to represent days when work should not occur.
+         * 
+         * @param {string} scheduleName - The name of the schedule to create
+         * @returns {string} The sys_id of the newly created cmn_schedule record
+         * @throws {Error} If a schedule with the given name already exists
+         */
+        createWeekendSchedule: function(scheduleName) {
+            // Check if schedule already exists
+            var existingSchedule = new GlideRecord('cmn_schedule');
+            existingSchedule.addQuery('name', scheduleName);
+            existingSchedule.query();
+            if (existingSchedule.next()) {
+                throw new Error('Schedule with name "' + scheduleName + '" already exists with sys_id: ' + existingSchedule.getUniqueValue());
+            }
+
+            // Create the schedule
+            // Need to use KLF_GlideRecordUtils because of scoped application insert restrictions
+            var scheduleGr = new global.KLF_GlideRecordUtils().insertRecord('cmn_schedule', {
+                name: scheduleName,
+                time_zone: 'US/Eastern' // Federal holidays are typically based on Eastern time
+            });
+            if(!scheduleGr.isValidRecord()) {
+                throw new Error('Failed to create schedule');
+            }
+            var scheduleSysId = scheduleGr.getUniqueValue();
+
+            if (!scheduleSysId) {
+                throw new Error('Failed to create schedule');
+            }
+
+            // Constants for day of week (ServiceNow uses 1=Sunday, 2=Monday, etc.)
+            var DAY_OF_WEEK = {
+                SUNDAY: 7,
+                SATURDAY: 6
+            };
+
+            // Create schedule spans for Saturday and Sunday
+            var weekendDays = [
+                { name: 'Saturday', dayOfWeek: DAY_OF_WEEK.SATURDAY, referenceDate: '2025-11-01' },
+                { name: 'Sunday', dayOfWeek: DAY_OF_WEEK.SUNDAY, referenceDate: '2025-11-02' }
+            ];
+
+
+            weekendDays.forEach(function(day) {
+                var referenceDate = new GlideDateTime(day.referenceDate).getDate();
+                var beginningOfDay = referenceDate.getDisplayValue() + ' ' + '00:00:00'; // Format should be yyyyMMddTHH:mm:ss
+                var endOfDay = referenceDate.getDisplayValue() + ' ' + '23:59:59'; // Format should be yyyyMMddTHH:mm:ss
+                var span = new GlideRecord('cmn_schedule_span');
+                span.newRecord();
+                span.schedule = scheduleSysId;
+                span.name = day.name;
+                span.type = 'exclude';
+                span.all_day = true;
+                span.repeat_type = 'weekly';
+                span.days_of_week = day.dayOfWeek.toString();
+                span.start_date_time = beginningOfDay; // This is not a normal DateTime field. It's a Schedule Date/Time field
+                span.end_date_time = endOfDay; // This is not a normal DateTime field. It's a Schedule Date/Time field
+
+                span.insert();
+            });
+
+            gs.info('Created weekend schedule "' + scheduleName + '" with sys_id: ' + scheduleSysId);
+            return scheduleSysId;
+        },
+
+        /**
+         * Creates a schedule for Federal Business Days
+         * This schedule includes weekdays, excludes weekends and federal holidays
+         * 
+         * Three schedules are created:
+         * 1. Main schedule for weekdays (Monday to Friday)
+         * 2. Holiday schedule for federal holidays - These are excluded from the main schedule
+         * 3. Weekend schedule for Saturdays and Sundays - These are excluded from the main schedule
+         * 
+         * You can optionally provide names for the holiday and weekend schedules. If not provided,
+         * default names will be used.
+         * 
+         * @param {string} scheduleName - The name of the schedule to create
+         * @param {string} [holidayScheduleName = 'Federal Holiday'] - The name of the holiday schedule to create
+         * @param {string} [weekendScheduleName = 'Federal Weekend'] - The name of the weekend schedule to create
+         * @returns {string} The sys_id of the newly created cmn_schedule record
+         * @throws {Error} If a schedule with the given name already exists
+         */
+        createFederalBusinessDaySchedule: function(scheduleName, holidayScheduleName, weekendScheduleName) {
+            // Check if schedule already exists
+            var existingSchedule = new GlideRecord('cmn_schedule');
+            existingSchedule.addQuery('name', scheduleName);
+            existingSchedule.query();
+            if (existingSchedule.next()) {
+                throw new Error('Schedule with name "' + scheduleName + '" already exists with sys_id: ' + existingSchedule.getUniqueValue());
+            }
+
+            // Create the schedule
+            // Need to use KLF_GlideRecordUtils because of scoped application insert restrictions
+            var scheduleGr = new global.KLF_GlideRecordUtils().insertRecord('cmn_schedule', {
+                name: scheduleName,
+                time_zone: 'US/Eastern' // Federal holidays are typically based on Eastern time
+            });
+            if(!scheduleGr.isValidRecord()) {
+                throw new Error('Failed to create schedule');
+            }
+            var scheduleSysId = scheduleGr.getUniqueValue();
+
+            if (!scheduleSysId) {
+                throw new Error('Failed to create schedule');
+            }
+
+            var _holidayScheduleName = holidayScheduleName || 'Federal Holidays';
+            var _weekendScheduleName = weekendScheduleName || 'Federal Weekend';
+            var holidayScheduleSysId = this.createFederalHolidaySchedule(_holidayScheduleName);
+            var weekendScheduleSysId = this.createWeekendSchedule(_weekendScheduleName);
+
+            // Create schedule spans for weekdays (Monday to Friday)
+            var weekdaySpan = new GlideRecord('cmn_schedule_span');
+            weekdaySpan.newRecord();
+            weekdaySpan.schedule = scheduleSysId;
+            weekdaySpan.name = 'Weekdays (Monday to Friday)';
+            weekdaySpan.repeat_type = 'weekdays';
+            var referenceDate = new GlideDateTime().getDate();
+            var beginningOfDay = referenceDate.getDisplayValue() + ' ' + '00:00:00';
+            var endOfDay = referenceDate.getDisplayValue() + ' ' + '23:59:59';
+            weekdaySpan.start_date_time = beginningOfDay; 
+            weekdaySpan.end_date_time = endOfDay;
+            weekdaySpan.insert();
+
+            // Link the holiday and weekend schedules as exclusions
+            var holidayExclusion = new GlideRecord('cmn_other_schedule');
+            holidayExclusion.newRecord();
+            holidayExclusion.schedule = scheduleSysId;
+            holidayExclusion.child_schedule = holidayScheduleSysId;
+            holidayExclusion.time_zone = 'US/Eastern';
+            holidayExclusion.type = 'include';
+            holidayExclusion.insert();
+
+            var weekendExclusion = new GlideRecord('cmn_other_schedule');
+            weekendExclusion.newRecord();
+            weekendExclusion.schedule = scheduleSysId;
+            weekendExclusion.child_schedule = weekendScheduleSysId;
+            weekendExclusion.time_zone = 'US/Eastern';
+            weekendExclusion.type = 'include';
+            weekendExclusion.insert();
+
+            gs.info('Created weekday schedule "' + scheduleName + '" with sys_id: ' + scheduleSysId);
+            return scheduleSysId;
+        },
+
+        /**
+         * Creates the default Federal Business Day schedule and updates the system property. 
+         * That points to the schedule for the added business days calculations.
+         * @returns {string} The sys_id of the newly created cmn_schedule record
+         */
+        createDefaultFederalBusinessDayScheduleAndUpdateSystemProperty: function() {
+            gs.info('Creating default Federal Business Day schedule');
+            var scheduleId = this.createFederalBusinessDaySchedule('Federal Business Day');
+
+            gs.info('Updating system property x_912467_klf.DateUtils.business_days_schedule_sys_id to ' + scheduleId);
+            gs.setProperty('x_912467_klf.DateUtils.business_days_schedule_sys_id', scheduleId);
+
+            gs.info('Updating access for DurationCalculator script include to public');
+            // This script also has a dependency on DurationCalculator script include. By default the DurationCalculator
+            // script include is not available in scoped applications. To resolve this we need to
+            // make DurationCalculator accessible to all scopes by setting its access to public.
+            new global.KLF_GlideRecordUtils().updateRecord('sys_script_include', 'sys_id=c14b7dd30a6a803f2f25e0e60a457f7b', {
+                access: 'public'
+            });
+
+            return scheduleId;
         }
     };
 })();
@@ -156,12 +521,12 @@ x_912467_klf.DateUtils = (function() {
 //@ts-ignore
 var x_912467_klf = x_912467_klf || {};
 /**
- * @class x_snb_common.Evaluator
+ * @class x_912467_klf.Evaluator
  * Eval function for scoped apps because you can't execute
  * GlideEvaluator.eval from scoped application
  * @example
  * var script = 'gs.info("Hello World")';
- * x_912467_klfx_snb_common.Evaluator.evaluate(script);
+ * x_912467_klf.Evaluator.evaluate(script);
  */
 x_912467_klf.Evaluator = (function() {
 
@@ -183,13 +548,42 @@ x_912467_klf.Evaluator = (function() {
     return {
         /**
          * @param {string} script 
+         * @param {{[argumentName: string]: any}} argumentMap
          * @returns {any}
          */
-        evaluate: function(script) {
+        evaluate: function(script, argumentMap) {
+            argumentMap = argumentMap || {};
             var fixScript = getFixScript();
             fixScript.script = script;
+            var evaluator = new GlideScopedEvaluator();
+            Object.keys(argumentMap || {}).forEach(function(argName) {
+                var argValue = argumentMap[argName];
+                evaluator.putVariable(argName, argValue);
+            });
+
             // @ts-ignore
-            return new GlideScopedEvaluator().evaluateScript(fixScript);
+            return evaluator.evaluateScript(fixScript);
+        }, 
+        
+        /**
+         * Evaluates the given script as the system user by calling a Flow Designer subflow.
+         * 
+         * You can pass parameters to the script via the argumentMap object.
+         * Each key in the argumentMap will be available as a variable in the script.
+         * @example
+         * x_912467_klf.Evaluator.evaluateAsSystem('gs.info("Hello World")');
+         * x_912467_klf.Evaluator.evaluateAsSystem('gs.info(message)', {message: 'Message Hello World'});
+         * @param {string} script
+         * @param {{[parameterName:string]: any}} [argumentMap]
+         * @returns {any}
+         */
+        evaluateAsSystem: function(script, argumentMap) {
+            var result = sn_fd.FlowAPI.executeSubflow('x_912467_klf.execute_as_system', {
+                func: script,
+                argumentMap: argumentMap
+            });
+
+            return result.output;
         }
     };
 
