@@ -5708,7 +5708,6 @@ global.KLF_RoleUtils.prototype = {
         return groupRole.hasNext();
     },
 };
-// @ts-nocheck
 /**
  * @todo This object is broken right now. Remove the ts-nocheck and fix the issues.
  * I created it as a way to scope global objects. I stopped working on it because because
@@ -5954,6 +5953,7 @@ global.KLF_Scoper.prototype = {
      * @param {string} tableName 
      */
     copyUiView: function(viewName, tableName) {
+        // @ts-ignore
         var viewCopier = new global.KLF_Scoper.ViewCopier(viewName, tableName, this.targetScope, this.targetScopeSysId);
         viewCopier.copy();
     },
@@ -6886,7 +6886,6 @@ global.KLF_ScoperUtils.prototype = {
         property.update();
     }
 };
-// @ts-nocheck
 /**
  * @todo This object is broken right now. Remove the ts-nocheck and fix the issues.
  */
@@ -6985,6 +6984,15 @@ global.KLF_ScoperUtils_DataMigrator.prototype = {
             this.unloadRecord(journal, document);
         }
         return manifest;
+    },
+
+    /**
+     * Unloads a record from the update set
+     * @param {GlideRecord} gr
+     * @param {Document} document
+     */
+    unloadRecord: function(gr, document) {
+        throw 'unloadRecord method not implemented';
     },
 
     /**

@@ -199,7 +199,7 @@ interface g_form {
     /** Displays the field if true. Hides the field if false. If the field is hidden, the space is left blank. This method cannot hide mandatory fields with no value */
     setVisible(fieldName: string, display: boolean): void;
     /** Displays an error message under the specified form field (either a control object or the name of the field). If the control or field is currently scrolled off the screen, it will be scrolled to. A global property (glide.ui.scroll_to_message_field) is available that controls automatic message scrolling when the form field is offscreen (scrolls the form to the control or field). The showFieldMsg() method is a similar method that requires a 'type' parameter */
-    showErrorBox(input: string, message: string, scrollForm: boolean): void;
+    showErrorBox(input: string, message: string, scrollForm?: boolean): void;
     /** Displays either an informational or error message under the specified form field (either a control object or the name of the field). Type may be either 'info' or 'error.' If the control or field is currently scrolled off the screen, it will be scrolled to. A global property (glide.ui.scroll_to_message_field) is available that controls automatic message scrolling when the form field is offscreen (scrolls the form to the control or field) */
     showFieldMsg(input: string, message: string, type?: string, scrollForm?: boolean): void;
     /** Displays the specified related list on the form */
