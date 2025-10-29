@@ -184,7 +184,7 @@ async function updateTsconfigJson(tsconfigPath: string): Promise<void> {
 function writeText(path: string, text: string): Thenable<void> {
     return vscode.workspace.fs.writeFile(
         vscode.Uri.file(path),
-        Buffer.from(text)
+        Buffer.from(text) as Uint8Array
     );
 }
 
