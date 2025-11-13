@@ -5,12 +5,6 @@
         "problemMatcher": [
             "$eslint-stylish"
         ],
-        "label": "eslint: lint whole folder"
-    }, {
-        "type": "eslint",
-        "problemMatcher": [
-            "$eslint-stylish"
-        ],
         "label": "eslint: lint whole folder",
         "runOptions": {
             "runOn": "folderOpen"

@@ -26,5 +26,8 @@
     },
     "[json]": {
         "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "terminal.integrated.automationProfile.windows": {
+        "path": "C:\\Windows\\System32\\cmd.exe"
     }
 }
