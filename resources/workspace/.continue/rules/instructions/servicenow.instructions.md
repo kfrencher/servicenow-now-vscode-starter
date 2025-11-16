@@ -1,7 +1,7 @@
 ---
 description: Instructions for integrating with ServiceNow
 applyTo: '**/*.js, **/*.ts, **/*.json, **/*.scss, **/*.html'
-globs: '**/*.js, **/*.ts, **/*.json, **/*.scss, **/*.html'
+globs: ['**/*.js', '**/*.ts', '**/*.json', '**/*.scss', '**/*.html']
 ---
 
 # ServiceNow Integration Instructions

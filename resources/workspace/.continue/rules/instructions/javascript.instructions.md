@@ -1,7 +1,7 @@
 ---
 description: 'JavaScript coding guidelines with TypeScript type safety using JSDoc annotations.'
 applyTo: '**/*.ts, **/*.js'
-globs:  '**/*.ts, **/*.js'
+globs:  '**/*.{ts,js}'
 ---
 # JavaScript Coding Guidelines
 

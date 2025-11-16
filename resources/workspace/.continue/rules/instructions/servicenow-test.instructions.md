@@ -1,6 +1,7 @@
 ---
 description: 'Guidelines for creating unit tests in ServiceNow using Jasmine framework'
 applyTo: '**/*Test.script.js'
+globs: '**/*Test.script.js'
 ---
 
 # ServiceNow Unit Testing Guidelines
