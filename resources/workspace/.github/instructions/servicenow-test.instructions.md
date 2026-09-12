@@ -467,48 +467,11 @@ describe('someMethod()', function() {
 });
 ```
 
-## Variable Declarations
+## Variable Declarations & Array Operations
 
-Follow JavaScript coding guidelines within tests:
-
-```javascript
-// ✅ Use const for values that won't be reassigned
-const expectedValue = 'test';
-const config = { option: true };
-
-// ✅ Use let when reassignment is needed
-let counter = 0;
-counter++;
-
-// ❌ Never use var
-var oldStyle = 'avoid';
-```
-
-## Array Operations in Tests
-
-Prefer array methods over traditional loops:
-
-```javascript
-// ✅ Good - Use array methods
-var groupSysIds = groups.map(function(group) {
-    return group.getUniqueValue();
-});
-
-var activeGroups = groups.filter(function(group) {
-    return group.getValue('active') === 'true';
-});
-
-// Clear sysId fields for comparison
-fields.forEach(function(field) {
-    field.sysId = '';
-});
-
-// ❌ Avoid - Traditional for loops
-var groupSysIds = [];
-for (var i = 0; i < groups.length; i++) {
-    groupSysIds.push(groups[i].getUniqueValue());
-}
-```
+Test code follows the same rules as `javascript.instructions.md` (const/let, never
+`var`; prefer array methods like `.map()`/`.filter()`/`.forEach()` over `for` loops) —
+see that file for examples instead of repeating them here.
 
 ## Sorting for Consistent Comparisons
 
